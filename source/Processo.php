@@ -71,7 +71,7 @@ class Processo
 
     public function procStatus(int $id): ?Processo
     {
-        $stmt = $this->pdo->prepare("SELECT a.status_id, s.status_pc FROM analise_pdde_24 a JOIN status_processo s ON a.status_id = s.id WHERE a.proc_id = :id");
+        $stmt = $this->pdo->prepare("SELECT a.status_id, s.status_pc FROM analise_pdde_25 a JOIN status_processo s ON a.status_id = s.id WHERE a.proc_id = :id");
         $stmt->execute(['id' => $id]);
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
 
@@ -86,7 +86,7 @@ class Processo
         $agora = $agora->format('Y-m-d');
         $idSts = 2;
 
-        $stmt = $this->pdo->prepare("INSERT INTO analise_pdde_24 (proc_id, status_id, data_ent) VALUES (:id,:idStatus,:dataEnt)");
+        $stmt = $this->pdo->prepare("INSERT INTO analise_pdde_25 (proc_id, status_id, data_ent) VALUES (:id,:idStatus,:dataEnt)");
         
         return $stmt->execute([
             'id' => $id,
@@ -97,7 +97,7 @@ class Processo
 
     public function abrirTramitacao(int $id): ?Processo
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM analise_pdde_24 WHERE proc_id = :id");
+        $stmt = $this->pdo->prepare("SELECT * FROM analise_pdde_25 WHERE proc_id = :id");
         $stmt->execute(['id' => $id]);
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
 
@@ -112,7 +112,7 @@ class Processo
         $agora = $agora->format('Y-m-d');
         $svFlag = 1;
 
-        $stmt = $this->pdo->prepare("UPDATE analise_pdde_24 SET 
+        $stmt = $this->pdo->prepare("UPDATE analise_pdde_25 SET 
             status_id = :idStatus, 
             usuario_ex_id= :idUser, 
             data_analise_ex = :dtAnalEx,
@@ -142,7 +142,7 @@ class Processo
         $agora = $agora->format('Y-m-d');
         $idSts = 5;
 
-        $stmt = $this->pdo->prepare("UPDATE analise_pdde_24 SET 
+        $stmt = $this->pdo->prepare("UPDATE analise_pdde_25 SET 
             status_id = :idStatus,
             data_enc_af = :agora 
             WHERE proc_id = :idProc");
@@ -160,7 +160,7 @@ class Processo
     {
         if(isset($data['checkEmailFin']) && $data['checkEmailFin'] == "1"){ $chEmailFin = 1; } else { $chEmailFin = 0; }        
         
-        $stmt = $this->pdo->prepare("UPDATE analise_pdde_24 SET 
+        $stmt = $this->pdo->prepare("UPDATE analise_pdde_25 SET 
             obs_analise_fin = :obsAnFin, 
             email_af = :chEmailFin WHERE proc_id = :idProc");
         
@@ -180,7 +180,7 @@ class Processo
         $agora = $agora->format('Y-m-d');
         $idSts = 7;
 
-        $stmt = $this->pdo->prepare("UPDATE analise_pdde_24 SET 
+        $stmt = $this->pdo->prepare("UPDATE analise_pdde_25 SET 
             status_id = :idStatus,
             data_sigpc = :agora WHERE proc_id = :idProc");
         

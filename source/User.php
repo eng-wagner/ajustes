@@ -172,7 +172,7 @@ class User
 
     public function usuariosComPendencias(): array
     {
-        $stmt = $this->pdo->query("SELECT DISTINCT p.usuario_id, u.nome FROM pendencias_24 p JOIN usuarios u ON p.usuario_id = u.id");        
+        $stmt = $this->pdo->query("SELECT DISTINCT p.usuario_id, u.nome FROM pendencias_25 p JOIN usuarios u ON p.usuario_id = u.id");        
         return $stmt->fetchAll(PDO::FETCH_CLASS, self::class);
     }
 }

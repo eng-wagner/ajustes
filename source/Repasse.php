@@ -23,7 +23,7 @@ class Repasse
      */
     public function all(): array
     {
-        $stmt = $this->pdo->query("SELECT * FROM repasse24");        
+        $stmt = $this->pdo->query("SELECT * FROM repasse_25");        
         return $stmt->fetchAll(PDO::FETCH_CLASS, self::class);
     }
 
@@ -35,7 +35,7 @@ class Repasse
    
     public function findById(int $id): array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM repasse_24 WHERE proc_id = :id");
+        $stmt = $this->pdo->prepare("SELECT * FROM repasse_25 WHERE proc_id = :id");
         $stmt->execute(['id' => $id]);
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
 
@@ -44,7 +44,7 @@ class Repasse
 
     public function somaRepasseCByProcAcao(int $idProc, int $idAcao): float
     {
-        $stmt = $this->pdo->prepare("SELECT SUM(custeio) AS repasse FROM repasse_24 WHERE acao_id = :idAcao AND proc_id = :idProc");
+        $stmt = $this->pdo->prepare("SELECT SUM(custeio) AS repasse FROM repasse_25 WHERE acao_id = :idAcao AND proc_id = :idProc");
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
         $stmt->execute([
             'idProc' => $idProc,
@@ -55,7 +55,7 @@ class Repasse
 
     public function somaRepasseKByProcAcao(int $idProc, int $idAcao): float
     {
-        $stmt = $this->pdo->prepare("SELECT SUM(capital) AS repasse FROM repasse_24 WHERE acao_id = :idAcao AND proc_id = :idProc");
+        $stmt = $this->pdo->prepare("SELECT SUM(capital) AS repasse FROM repasse_25 WHERE acao_id = :idAcao AND proc_id = :idProc");
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
         $stmt->execute([
             'idProc' => $idProc,

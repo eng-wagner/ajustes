@@ -44,7 +44,7 @@ class Banco
      */
     public function findLYById(int $id): array
     {
-        $stmt = $this->pdo->prepare("SELECT agencia, conta, cc_2023 AS cc_LY, pp_01_2023 AS pp_01_LY, pp_51_2023 AS pp_51_LY, spubl_2023 AS spubl_LY, bb_rf_cp_2023 AS bb_rf_cp_LY FROM banco WHERE proc_id = :id");
+        $stmt = $this->pdo->prepare("SELECT agencia, conta, cc_2024 AS cc_LY, pp_01_2024 AS pp_01_LY, pp_51_2024 AS pp_51_LY, spubl_2024 AS spubl_LY, bb_rf_cp_2024 AS bb_rf_cp_LY FROM banco WHERE proc_id = :id");
         $stmt->execute(['id' => $id]);
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
 
@@ -53,7 +53,7 @@ class Banco
 
     public function findCYById(int $id): array
     {
-        $stmt = $this->pdo->prepare("SELECT agencia, conta, cc_2024 AS cc_CY, pp_01_2024 AS pp_01_CY, pp_51_2024 AS pp_51_CY, spubl_2024 AS spubl_CY, bb_rf_cp_2024 AS bb_rf_cp_CY FROM banco WHERE proc_id = :id");
+        $stmt = $this->pdo->prepare("SELECT agencia, conta, cc_2025 AS cc_CY, pp_01_2025 AS pp_01_CY, pp_51_2025 AS pp_51_CY, spubl_2025 AS spubl_CY, bb_rf_cp_2025 AS bb_rf_cp_CY FROM banco WHERE proc_id = :id");
         $stmt->execute(['id' => $id]);
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
 
@@ -63,16 +63,16 @@ class Banco
     public function findByProcId(int $id): array
     {        
         $stmt = $this->pdo->prepare("SELECT *,
-            cc_2023 AS cc_LY, 
-            cc_2024 AS cc_CY, 
-            pp_01_2023 AS pp_01_LY, 
-            pp_01_2024 AS pp_01_CY,
-            pp_51_2023 AS pp_51_LY, 
-            pp_51_2024 AS pp_51_CY, 
-            spubl_2023 AS spubl_LY,
-            spubl_2024 AS spubl_CY, 
-            bb_rf_cp_2023 AS bb_rf_cp_LY,
-            bb_rf_cp_2024 AS bb_rf_cp_CY FROM banco WHERE proc_id = :id");
+            cc_2024 AS cc_LY, 
+            cc_2025 AS cc_CY, 
+            pp_01_2024 AS pp_01_LY, 
+            pp_01_2025 AS pp_01_CY,
+            pp_51_2024 AS pp_51_LY, 
+            pp_51_2025 AS pp_51_CY, 
+            spubl_2024 AS spubl_LY,
+            spubl_2025 AS spubl_CY, 
+            bb_rf_cp_2024 AS bb_rf_cp_LY,
+            bb_rf_cp_2025 AS bb_rf_cp_CY FROM banco WHERE proc_id = :id");
         $stmt->execute(['id' => $id]);
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
 
@@ -90,7 +90,7 @@ class Banco
 
     public function somaBancoCY(int $idProc): ?Banco
     {
-        $stmt = $this->pdo->prepare("SELECT SUM(cc_2024) AS ccSF, SUM(pp_01_2024) AS pp01SF, SUM(pp_51_2024) AS pp51SF, SUM(spubl_2024) AS spublSF, SUM(bb_rf_cp_2024) AS bbrfSF FROM banco WHERE proc_id = :idProc");
+        $stmt = $this->pdo->prepare("SELECT SUM(cc_2025) AS ccSF, SUM(pp_01_2025) AS pp01SF, SUM(pp_51_2025) AS pp51SF, SUM(spubl_2025) AS spublSF, SUM(bb_rf_cp_2025) AS bbrfSF FROM banco WHERE proc_id = :idProc");
         $stmt->execute(['idProc' => $idProc]);
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
 

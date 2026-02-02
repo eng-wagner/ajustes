@@ -25,7 +25,7 @@ class Pendencia
      */
     public function all(): array
     {
-        $stmt = $this->pdo->query("SELECT * FROM pendencias_24");        
+        $stmt = $this->pdo->query("SELECT * FROM pendencias_25");        
         return $stmt->fetchAll(PDO::FETCH_CLASS, self::class);
     }
 
@@ -37,13 +37,13 @@ class Pendencia
 
     public function findPendAtivas(): array
     {
-        $stmt = $this->pdo->query("SELECT s.id, u.id AS iduser, u.nome, s.dataPend, s.itemDRD, t.documento, s.favorecido, d.pendencia, s.providencias, s.resolvido, s.dataResolvido, p.tipo, i.instituicao FROM pendencias_24 s JOIN processos p ON s.proc_id = p.id JOIN instituicoes i ON p.instituicao_id = i.id JOIN usuarios u ON s.usuario_id = u.id JOIN tipo_documento t ON s.docPend_id = t.id JOIN tipo_pendencia d ON s.pend_id = d.id WHERE s.ativado = 1");
+        $stmt = $this->pdo->query("SELECT s.id, u.id AS iduser, u.nome, s.dataPend, s.itemDRD, t.documento, s.favorecido, d.pendencia, s.providencias, s.resolvido, s.dataResolvido, p.tipo, i.instituicao FROM pendencias_25 s JOIN processos p ON s.proc_id = p.id JOIN instituicoes i ON p.instituicao_id = i.id JOIN usuarios u ON s.usuario_id = u.id JOIN tipo_documento t ON s.docPend_id = t.id JOIN tipo_pendencia d ON s.pend_id = d.id WHERE s.ativado = 1");
         return $stmt->fetchAll(PDO::FETCH_CLASS, self::class);        
     }
 
     public function findPendAtivasByProg(string $programa): array
     {
-        $stmt = $this->pdo->prepare("SELECT s.id, u.id AS iduser, u.nome, s.dataPend, s.itemDRD, t.documento, s.favorecido, d.pendencia, s.providencias, s.resolvido, s.dataResolvido, p.tipo, i.instituicao FROM pendencias_24 s JOIN processos p ON s.proc_id = p.id JOIN instituicoes i ON p.instituicao_id = i.id JOIN usuarios u ON s.usuario_id = u.id JOIN tipo_documento t ON s.docPend_id = t.id JOIN tipo_pendencia d ON s.pend_id = d.id WHERE s.ativado = 1 AND p.tipo = :programa");
+        $stmt = $this->pdo->prepare("SELECT s.id, u.id AS iduser, u.nome, s.dataPend, s.itemDRD, t.documento, s.favorecido, d.pendencia, s.providencias, s.resolvido, s.dataResolvido, p.tipo, i.instituicao FROM pendencias_25 s JOIN processos p ON s.proc_id = p.id JOIN instituicoes i ON p.instituicao_id = i.id JOIN usuarios u ON s.usuario_id = u.id JOIN tipo_documento t ON s.docPend_id = t.id JOIN tipo_pendencia d ON s.pend_id = d.id WHERE s.ativado = 1 AND p.tipo = :programa");
         $stmt->execute(['programa' => $programa]);
         return $stmt->fetchAll(PDO::FETCH_CLASS, self::class);        
     }
@@ -55,7 +55,7 @@ class Pendencia
      */ 
     public function findById(int $id): ?Pendencia
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM pendencias_24 WHERE id = :id");
+        $stmt = $this->pdo->prepare("SELECT * FROM pendencias_25 WHERE id = :id");
         $stmt->execute(['id' => $id]);
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
 
@@ -75,14 +75,14 @@ class Pendencia
 
     public function contarPendencias(int $procId): int
     {
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) AS pendencias FROM pendencias_24 WHERE proc_id = :procId AND resolvido = 0 AND ativado = 1");
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) AS pendencias FROM pendencias_25 WHERE proc_id = :procId AND resolvido = 0 AND ativado = 1");
         $stmt->execute(['procId' => $procId]);
         return (int) $stmt->fetchColumn();        
     }
 
     public function findByProcId(int $procId): array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM pendencias_24 WHERE proc_id = :procId");
+        $stmt = $this->pdo->prepare("SELECT * FROM pendencias_25 WHERE proc_id = :procId");
         $stmt->execute(['procId' => $procId]);        
 
         return $stmt->fetchAll(PDO::FETCH_CLASS, self::class);        
@@ -96,7 +96,7 @@ class Pendencia
                         
         $resolvido = 1;
 
-        $query = "UPDATE pendencias_24 SET 
+        $query = "UPDATE pendencias_25 SET 
             resolvido = :resolvido,
             dataResolvido = :agora
             WHERE id = :id";
@@ -115,7 +115,7 @@ class Pendencia
     {        
         $ativado = 0;
 
-        $query = "UPDATE pendencias_24 SET 
+        $query = "UPDATE pendencias_25 SET 
             usuario_id = :userId, 
             ativado = :ativado
             WHERE id = :id";
@@ -161,7 +161,7 @@ class Pendencia
         $dataDocPend = $dataDocPend->format("Y-m-d");
         
         $stmt = $this->pdo->prepare(
-            "INSERT INTO pendencias_24 (proc_id, usuario_id, dataPend, itemDRD, docPend_id, favorecido, dataDocPend, numDocPend, pend_id, providencias, etapa_id) 
+            "INSERT INTO pendencias_25 (proc_id, usuario_id, dataPend, itemDRD, docPend_id, favorecido, dataDocPend, numDocPend, pend_id, providencias, etapa_id) 
             VALUES (:proc_id, :usuario_id, :dataPend, :itemDRD, :docPend_id, :favorecido, :dataDocPend, :numDocPend, :pend_id, :providencias, :etapa_id)"
         );
 
@@ -194,7 +194,7 @@ class Pendencia
         $dataDocPend = new DateTime($data['dataDocP'],$timezone);
         $dataDocPend = $dataDocPend->format("Y-m-d");
 
-        $query = "UPDATE pendencias_24 SET 
+        $query = "UPDATE pendencias_25 SET 
             usuario_id = :usuario_id, 
             dataPend = :dataPend, 
             itemDRD = :itemDRD, 
@@ -232,7 +232,7 @@ class Pendencia
      */
     public function delete(int $id): bool
     {
-        $stmt = $this->pdo->prepare("DELETE FROM pdde_despesas_24 WHERE id = :id");
+        $stmt = $this->pdo->prepare("DELETE FROM pdde_despesas_25 WHERE id = :id");
         return $stmt->execute(['id' => $id]);
     }
 

@@ -29,7 +29,7 @@ class Saldo
 
     public function findById(int $id): ?Saldo
     {
-        $stmt = $this->pdo->prepare("SELECT *, saldo23 as saldoLY, rp24 as rpCY, rent24 as rentCY, devl24 as devlCY, saldo24 as saldoCY FROM saldo_pdde WHERE id = :idSaldo");
+        $stmt = $this->pdo->prepare("SELECT *, saldo24 as saldoLY, rp25 as rpCY, rent25 as rentCY, devl25 as devlCY, saldo25 as saldoCY FROM saldo_pdde WHERE id = :idSaldo");
         $stmt->execute(['idSaldo' => $id]);
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
 
@@ -44,7 +44,7 @@ class Saldo
      */
     public function findSaldoByProcCat(int $idProc, string $cat): array
     {
-        $stmt = $this->pdo->prepare("SELECT *, saldo23 as saldoLY, rp24 as rpCY, rent24 as rentCY, devl24 as devlCY FROM saldo_pdde WHERE proc_id = :idProc AND categoria = :cat");
+        $stmt = $this->pdo->prepare("SELECT *, saldo24 as saldoLY, rp25 as rpCY, rent25 as rentCY, devl25 as devlCY FROM saldo_pdde WHERE proc_id = :idProc AND categoria = :cat");
         $stmt->execute([
             'idProc' => $idProc,
             'cat' => $cat ]);
@@ -55,7 +55,7 @@ class Saldo
 
     public function findCYById(int $id): array
     {
-        $stmt = $this->pdo->prepare("SELECT agencia, conta, cc_2024 AS cc_CY, pp_01_2024 AS pp_01_CY, pp_51_2024 AS pp_51_CY, spubl_2024 AS spubl_CY, bb_rf_cp_2024 AS bb_rf_cp_CY FROM banco WHERE proc_id = :id");
+        $stmt = $this->pdo->prepare("SELECT agencia, conta, cc_2025 AS cc_CY, pp_01_2025 AS pp_01_CY, pp_51_2025 AS pp_51_CY, spubl_2025 AS spubl_CY, bb_rf_cp_2025 AS bb_rf_cp_CY FROM banco WHERE proc_id = :id");
         $stmt->execute(['id' => $id]);
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
 

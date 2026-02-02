@@ -25,7 +25,7 @@ class Despesa
      */
     public function all(): array
     {
-        $stmt = $this->pdo->query("SELECT * FROM pdde_despesas_24");        
+        $stmt = $this->pdo->query("SELECT * FROM pdde_despesas_25");        
         return $stmt->fetchAll(PDO::FETCH_CLASS, self::class);
     }
 
@@ -36,7 +36,7 @@ class Despesa
      */ 
     public function findById(int $id): ?Despesa
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM pdde_despesas_24 WHERE id = :id");
+        $stmt = $this->pdo->prepare("SELECT * FROM pdde_despesas_25 WHERE id = :id");
         $stmt->execute(['id' => $id]);
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
 
@@ -46,7 +46,7 @@ class Despesa
 
     public function findByProcId(int $procId): array
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM pdde_despesas_24 WHERE proc_id = :procId");
+        $stmt = $this->pdo->prepare("SELECT * FROM pdde_despesas_25 WHERE proc_id = :procId");
         $stmt->execute(['procId' => $procId]);
         //$stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
 
@@ -93,7 +93,7 @@ class Despesa
 
        
         $stmt = $this->pdo->prepare(
-            "INSERT INTO pdde_despesas_24(proc_id, acao_id, categoria, fornecedor, cnpj_forn, descricao, documento, pagamento, data_desp, valor, check_prog, check_ata, check_enq, check_cons, usuario_id, datahora) 
+            "INSERT INTO pdde_despesas_25(proc_id, acao_id, categoria, fornecedor, cnpj_forn, descricao, documento, pagamento, data_desp, valor, check_prog, check_ata, check_enq, check_cons, usuario_id, datahora) 
             VALUES (:proc_id, :acao_id, :categoria, :fornecedor, :cnpj_forn, :descricao, :documento, :pagamento, :data_desp, :valor, :check_prog, :check_ata, :check_enq, :check_cons, :usuario_id, :datahora)"
         );
 
@@ -138,7 +138,7 @@ class Despesa
         if(isset($data['checkEnquad']) && $data['checkEnquad'] == "1"){ $chEnq = 1; } else { $chEnq = 0; }
         if(isset($data['checkConso']) && $data['checkConso'] == "1"){ $chCs = 1; } else { $chCs = 0; }
 
-        $query = "UPDATE pdde_despesas_24 SET 
+        $query = "UPDATE pdde_despesas_25 SET 
             acao_id = :acao_id, 
             categoria = :categoria, 
             fornecedor = :fornecedor, 
@@ -186,7 +186,7 @@ class Despesa
      */
     public function delete(int $id): bool
     {
-        $stmt = $this->pdo->prepare("DELETE FROM pdde_despesas_24 WHERE id = :id");
+        $stmt = $this->pdo->prepare("DELETE FROM pdde_despesas_25 WHERE id = :id");
         return $stmt->execute(['id' => $id]);
     }
 
@@ -200,7 +200,7 @@ class Despesa
         $valPagoSQL = str_replace(".", "", $valPagoSQL);
         $valPagoSQL = str_replace(",", ".", $valPagoSQL);
 
-        $query = "UPDATE pdde_despesas_24 SET 
+        $query = "UPDATE pdde_despesas_25 SET 
             data_pg = :dataPg, 
             valor_pg = :valorPg                
             WHERE pagamento = :pagamento AND proc_id = :idProc";
@@ -222,7 +222,7 @@ class Despesa
         $valGlosaSQL = str_replace(".", "", $valGlosaSQL);
         $valGlosaSQL = str_replace(",", ".", $valGlosaSQL);
 
-        $query = "UPDATE pdde_despesas_24 SET 
+        $query = "UPDATE pdde_despesas_25 SET 
             valor_gl = :valorGl, 
             motivo_gl = :motivoGl                
             WHERE id = :idDesp";
@@ -239,7 +239,7 @@ class Despesa
 
     public function somaByCatAcaoProc(int $idProc, int $idAcao, string $cat): float
     {
-        $stmt = $this->pdo->prepare("SELECT SUM(valor) AS despesa FROM pdde_despesas_24 WHERE acao_id = :idAcao AND proc_id = :idProc AND categoria = :cat");
+        $stmt = $this->pdo->prepare("SELECT SUM(valor) AS despesa FROM pdde_despesas_25 WHERE acao_id = :idAcao AND proc_id = :idProc AND categoria = :cat");
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
         $stmt->execute([
             'idProc' => $idProc,
@@ -252,7 +252,7 @@ class Despesa
 
     public function somaGlosaByAcaoProc(int $idProc, int $idAcao, string $cat): float
     {
-        $stmt = $this->pdo->prepare("SELECT SUM(valor_gl) AS glosa FROM pdde_despesas_24 WHERE acao_id = :idAcao AND proc_id = :idProc AND categoria = :cat");
+        $stmt = $this->pdo->prepare("SELECT SUM(valor_gl) AS glosa FROM pdde_despesas_25 WHERE acao_id = :idAcao AND proc_id = :idProc AND categoria = :cat");
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
         $stmt->execute([
             'idProc' => $idProc,

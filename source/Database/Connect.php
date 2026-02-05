@@ -12,10 +12,10 @@ class Connect
     //private const DBNAME = "id12365546_formacoes";
     //private const PASSWD = "senha";
     
-    //private const HOST = "localhost";
-    //private const USER = "root";
-    //private const DBNAME = "ajustes";
-    //private const PASSWD = "";
+    // private const HOST = "localhost";
+    // private const USER = "root";
+    // private const DBNAME = "ajustes";
+    // private const PASSWD = "";
 
     private const HOST = "ajustes.mysql.dbaas.com.br";
     private const USER = "ajustes";

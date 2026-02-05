@@ -78,7 +78,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
         
         <div class="row text-center">
             <span><b>ANÁLISE DE PRESTAÇÃO DE CONTAS DO PROGRAMA DINHEIRO DIRETO NA ESCOLA - <?= mb_strtoupper($programa) ?></b></span><br>
-            <span>Período: 01/01/2024 a 31/12/2024</span>
+            <span>Período: 01/01/2025 a 31/12/2025</span>
         </div>
         <div class="row">
             <div class="col-4 text-end">
@@ -115,7 +115,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                     <th style="min-width: 75px; max-width: 90px;" scope="col" class="col">DESCRIÇÃO</th>
                     <?php
                     $arrayAf = array();
-                    $sql = $pdo->prepare("SELECT s.acao_id, p.acao, s.categoria, s.saldo23, s.rp24, s.rent24, s.devl24, s.saldo24 FROM saldo_pdde s JOIN programaspdde p ON s.acao_id = p.id WHERE proc_id = :idProc ORDER BY s.acao_id");
+                    $sql = $pdo->prepare("SELECT s.acao_id, p.acao, s.categoria, s.saldo4, s.rp25, s.rent25, s.devl25, s.saldo25 FROM saldo_pdde s JOIN programaspdde p ON s.acao_id = p.id WHERE proc_id = :idProc ORDER BY s.acao_id");
                     $sql->bindParam("idProc", $_GET['idProc']);
                     $sql->execute();
                     while($af = $sql->fetch())
@@ -123,13 +123,13 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                         $acaoId = $af->acao_id;
                         $acao = $af->acao;
                         $categoria = $af->categoria;
-                        $saldo23 = $af->saldo23;
-                        $rp24 = $af->rp24;
-                        $rent24 = $af->rent24;
-                        $devl24 = $af->devl24;
-                        $saldo24 = $af->saldo24;                        
+                        $saldo4 = $af->saldo4;
+                        $rp25 = $af->rp25;
+                        $rent25 = $af->rent25;
+                        $devl25 = $af->devl25;
+                        $saldo25 = $af->saldo25;                        
 
-                        $stmt = $pdo->prepare("SELECT SUM(valor) AS despesa, SUM(valor_gl) AS glosa FROM pdde_despesas_24 WHERE acao_id = :idAcao AND proc_id = :idProc AND categoria = :cat");
+                        $stmt = $pdo->prepare("SELECT SUM(valor) AS despesa, SUM(valor_gl) AS glosa FROM pdde_despesas_25 WHERE acao_id = :idAcao AND proc_id = :idProc AND categoria = :cat");
                         $stmt->bindParam('idAcao',$acaoId);
                         $stmt->bindParam('idProc',$_GET['idProc']);
                         $stmt->bindParam('cat',$categoria);
@@ -143,7 +143,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                         }
                         if($categoria == "C")
                         {
-                            $stmt = $pdo->prepare("SELECT SUM(custeio) AS repasse FROM repasse_24 WHERE acao_id = :idAcao AND proc_id = :idProc");
+                            $stmt = $pdo->prepare("SELECT SUM(custeio) AS repasse FROM repasse_25 WHERE acao_id = :idAcao AND proc_id = :idProc");
                             $stmt->bindParam('idAcao',$acaoId);
                             $stmt->bindParam('idProc',$_GET['idProc']);                                            
                             if($stmt->execute())
@@ -156,7 +156,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                         }
                         else if($categoria == "K")
                         {
-                            $stmt = $pdo->prepare("SELECT SUM(capital) AS repasse FROM repasse_24 WHERE acao_id = :idAcao AND proc_id = :idProc");
+                            $stmt = $pdo->prepare("SELECT SUM(capital) AS repasse FROM repasse_25 WHERE acao_id = :idAcao AND proc_id = :idProc");
                             $stmt->bindParam('idAcao',$acaoId);
                             $stmt->bindParam('idProc',$_GET['idProc']);                                            
                             if($stmt->execute())
@@ -170,15 +170,15 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                         $currAf = array(
                             "acao" => $acao,
                             "categoria" => $categoria,
-                            "saldoInicial" => $saldo23,
+                            "saldoInicial" => $saldo24,
                             "repasse" => $repasse,
-                            "rp" => $rp24,
-                            "rent" => $rent24,
-                            "devol" => $devl24,
+                            "rp" => $rp25,
+                            "rent" => $rent25,
+                            "devol" => $devl25,
                             "despesa" => $despesa,                            
                             "glosa" => $glosa,
-                            "saldoParcial" => $af->saldo24 - $glosa,
-                            "saldoFinal" => $af->saldo24
+                            "saldoParcial" => $af->saldo25 - $glosa,
+                            "saldoFinal" => $af->saldo25
                         );                        
                         array_push($arrayAf,$currAf);                        
                     }
@@ -449,9 +449,9 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
             </thead>
             <tbody>
                 <tr class="text-center align-middle">
-                    <th colspan="2">Saldo da conta corrente/poupança em 31/12/2024</th>
+                    <th colspan="2">Saldo da conta corrente/poupança em 31/12/2025</th>
                     <?php
-                    $stmt = $pdo->prepare("SELECT SUM(cc_2024) AS ccSF, SUM(pp_01_2024) AS pp01SF, SUM(pp_51_2024) AS pp51SF, SUM(spubl_2024) AS spublSF, SUM(bb_rf_cp_2024) AS bbrfSF FROM banco WHERE proc_id = :idProc");                                    
+                    $stmt = $pdo->prepare("SELECT SUM(cc_2025) AS ccSF, SUM(pp_01_2025) AS pp01SF, SUM(pp_51_2025) AS pp51SF, SUM(spubl_2025) AS spublSF, SUM(bb_rf_cp_2025) AS bbrfSF FROM banco WHERE proc_id = :idProc");                                    
                     $stmt->bindParam('idProc',$_GET['idProc']);                                    
                     if($stmt->execute())
                     {
@@ -677,7 +677,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
             <img src="img/folhadeinformacao.png" width="100%" alt="folha de informação" />
             <br>
             <p><b>Serviço:</b></p>
-            <p style="text-indent: 3em; text-align: justify; text-justify: inter-word;">Procedemos a análise financeira da prestação de contas relativa ao Exercício 2024 do Programa Dinheiro Direto na Escola - <?= mb_strtoupper($programa) ?>, 
+            <p style="text-indent: 3em; text-align: justify; text-justify: inter-word;">Procedemos a análise financeira da prestação de contas relativa ao Exercício 2025 do Programa Dinheiro Direto na Escola - <?= mb_strtoupper($programa) ?>, 
             referente aos recursos repassados pelo Fundo Nacional de Desenvolvimento da Educação - FNDE à <?= $instituicao ?> e constatamos que a entidade possui saldo a utilizar no próximo exercício, 
             conforme demonstrado abaixo:</p>
             <br><br>
@@ -688,7 +688,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                 <tbody>                                    
                     <?php
                     $saldoCusteio = 0;
-                    $sql = $pdo->prepare("SELECT s.acao_id, p.acao, s.categoria, s.saldo24 FROM saldo_pdde s JOIN programaspdde p ON s.acao_id = p.id WHERE proc_id = :idProc ORDER BY s.acao_id");
+                    $sql = $pdo->prepare("SELECT s.acao_id, p.acao, s.categoria, s.saldo25 FROM saldo_pdde s JOIN programaspdde p ON s.acao_id = p.id WHERE proc_id = :idProc ORDER BY s.acao_id");
                     $sql->bindParam("idProc", $_GET['idProc']);
                     $sql->execute();
                     while($af = $sql->fetch())
@@ -696,7 +696,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                         $acaoId = $af->acao_id;
                         $acao = $af->acao;
                         $categoria = $af->categoria;                        
-                        $saldo24 = $af->saldo24;                        
+                        $saldo25 = $af->saldo25;                        
                         
                         if($categoria == "C")
                         {
@@ -704,10 +704,10 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                             echo '<td style="min-width: 15px;"></td>';
                             echo '<th style="min-width: 75px; max-width: 100px;" scope="col" class="col">CUSTEIO ' . mb_strtoupper($acao) . '</th>';
                             echo '<td></td>';
-                            echo '<td style="min-width: 75px; max-width: 100px;" scope="col" class="col text-center">R$ ' . number_format($saldo24, "2", ",", ".") . '</td>';
+                            echo '<td style="min-width: 75px; max-width: 100px;" scope="col" class="col text-center">R$ ' . number_format($saldo25, "2", ",", ".") . '</td>';
                             echo '<td></td>';
                             echo '</tr>';
-                            $saldoCusteio = $saldoCusteio + $saldo24;
+                            $saldoCusteio = $saldoCusteio + $saldo25;
                         }                                            
                     }                    
                     ?>                    
@@ -721,7 +721,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                     
                     <?php
                     $saldoCapital = 0;
-                    $sql = $pdo->prepare("SELECT s.acao_id, p.acao, s.categoria, s.saldo24 FROM saldo_pdde s JOIN programaspdde p ON s.acao_id = p.id WHERE proc_id = :idProc ORDER BY s.acao_id");
+                    $sql = $pdo->prepare("SELECT s.acao_id, p.acao, s.categoria, s.saldo25 FROM saldo_pdde s JOIN programaspdde p ON s.acao_id = p.id WHERE proc_id = :idProc ORDER BY s.acao_id");
                     $sql->bindParam("idProc", $_GET['idProc']);
                     $sql->execute();
                     while($af = $sql->fetch())
@@ -729,7 +729,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                         $acaoId = $af->acao_id;
                         $acao = $af->acao;
                         $categoria = $af->categoria;                        
-                        $saldo24 = $af->saldo24;                        
+                        $saldo25 = $af->saldo25;                        
                         
                         if($categoria == "K")
                         {
@@ -737,10 +737,10 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                             echo '<td style="min-width: 15px;"></td>';
                             echo '<th style="min-width: 75px; max-width: 100px;" scope="col" class="col">CAPITAL ' . mb_strtoupper($acao) . '</th>';
                             echo '<td></td>';                           
-                            echo '<td style="min-width: 75px; max-width: 100px;" scope="col" class="col text-center">R$ ' . number_format($saldo24, "2", ",", ".") . '</td>';
+                            echo '<td style="min-width: 75px; max-width: 100px;" scope="col" class="col text-center">R$ ' . number_format($saldo25, "2", ",", ".") . '</td>';
                             echo '<td></td>';
                             echo '</tr>';
-                            $saldoCapital = $saldoCapital + $saldo24;
+                            $saldoCapital = $saldoCapital + $saldo25;
                         }                        
                     }                    
                     ?>                    

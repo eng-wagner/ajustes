@@ -25,7 +25,7 @@ class Logs
      */
     public function all(): array
     {
-        $stmt = $this->pdo->query("SELECT * FROM action_logs");        
+        $stmt = $this->pdo->query("SELECT * FROM action_logs ORDER BY id DESC");        
         return $stmt->fetchAll(PDO::FETCH_CLASS, self::class);
     }
 

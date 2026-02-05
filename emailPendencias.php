@@ -55,12 +55,12 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
         <p><b>Prezado(a) Diretor(a) Executivo(a) da Associação de Pais e Mestres (APM) e <br/>
             Diretor(a) Escolar / Responsável pela Direção</b></p>
         
-        <p style="text-indent: 3em;">Procedemos a conferência da <b>prestação de contas do exercício de 2024 do programa <u><span style="background-color: yellow;"><?= $tipo; ?></span></u></b> e informamos a existência das pendências 
+        <p style="text-indent: 3em;">Procedemos a conferência da <b>prestação de contas do exercício de 2025 do programa <u><span style="background-color: yellow;"><?= $tipo; ?></span></u></b> e informamos a existência das pendências 
             relacionadas abaixo, as quais deverão ser regularizadas <b>em até 7 dias corridos</b>.
         </p>
         
         <p style="text-indent: 3em;">Lembramos que os arquivos compartilhados no Google Drive devem estar no formato PDF pesquisável legível conforme padrão estabelecido no 
-            Comunicado nº 15/2024 - SE-33, anexo à Rede nº 473/2024 - SE.
+            Comunicado nº 15/2025 - SE-33, anexo à Rede nº 526/2025 - SE.
         </p>
 
         <table style="border-collapse: collapse;">
@@ -120,11 +120,11 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
             </tbody>
         </table>              
         <br />
-        <p style="text-indent: 3em;"><b><span style="background-color: yellow;">Conforme orientação do Comunicado Nº 15/2024 - SE-33 a digitalização dos documentos fiscais devem ser fiel a via original (colorida) de acordo com as 
+        <p style="text-indent: 3em;"><b><span style="background-color: yellow;">Conforme orientação do Comunicado Nº 15/2025 - SE-33 a digitalização dos documentos fiscais devem ser fiel a via original (colorida) de acordo com as 
             orientações do Anexo I desse mesmo comunicado.</span></b>
         </p>
 
-        <p style="text-indent: 3em;">Por gentileza, substituir APENAS os documentos acima na pasta da Prestação de Contas do PDDE, no link indicado na Rede nº 473/2024 e Comunicado nº 15/2024.</p>
+        <p style="text-indent: 3em;">Por gentileza, substituir APENAS os documentos acima na pasta da Prestação de Contas do PDDE, no link indicado na Rede nº 526/2025 e Comunicado nº 15/2025.</p>
 
         <p style="text-indent: 3em;">Informamos que <b>após</b> a regularização, a referida prestação de contas passará pela análise sob aspecto financeiro. <b><u>Por meio dessa análise, outras ocorrências poderão ser eventualmente identificadas</u></b>.</p>
 

@@ -155,7 +155,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
         <div class="main p-3">
             <div class="text-center">
                 <h1>
-                    Prestação de Contas 2024 - PDDE
+                    Prestação de Contas 2025 - PDDE
                 </h1>
             </div>
             <!-- Início do Conteúdo  -->
@@ -259,7 +259,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                             <br />
                             <div class="row">
                                 <div class="col">
-                                    <h6>Saldo Bancário em 31/12/2023</h6>
+                                    <h6>Saldo Bancário em 31/12/2024</h6>
                                     <table class="table table-light table-hover table-sm">
                                         <thead>                                    
                                             <tr class="text-center">
@@ -317,7 +317,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                                     </table>
                                     <br />
                                     <br />
-                                    <h6>Saldo Bancário em 31/12/2024</h6>
+                                    <h6>Saldo Bancário em 31/12/2025</h6>
                                     <table class="table table-light table-hover table-sm">
                                         <thead>                                    
                                             <tr class="text-center">
@@ -384,7 +384,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                                     </table>
                                 </div>
                                 <div class="col">
-                                    <h6>Repasse 2024</h6>
+                                    <h6>Repasse 2025</h6>
                                     <table class="table table-light table-hover table-sm">
                                         <thead>
                                             <tr class="text-center">

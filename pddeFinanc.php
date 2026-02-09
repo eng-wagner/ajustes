@@ -2318,7 +2318,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                     <?php
                                     $sdConcOc = 0;
 
-                                    $stmt = $pdo->prepare("SELECT t.natureza, c.valorOcc FROM conciliacao c JOIN tipo_ocorrencia t ON c.occ_id = t.id WHERE proc_id = :idProc");
+                                    $stmt = $pdo->prepare("SELECT t.natureza, c.valorOcc FROM conciliacao25 c JOIN tipo_ocorrencia t ON c.occ_id = t.id WHERE proc_id = :idProc");
                                     $stmt->bindParam("idProc", $_SESSION['idProc']);
                                     $stmt->execute();
                                     while ($conc = $stmt->fetch()) {

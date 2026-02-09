@@ -78,7 +78,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
             <tbody>
                 <?php
                 $sql = Connect::getInstance()->prepare("SELECT p.itemDRD, d.documento, p.favorecido, p.numDocPend, p.dataDocPend, t.pendencia, p.providencias, p.etapa_id, p.resolvido, p.ativado 
-                FROM pendencias_24 p JOIN tipo_documento d ON p.docPend_id = d.id JOIN tipo_pendencia t ON p.pend_id = t.id WHERE p.proc_id = :idProc");                                                    
+                FROM pendencias_25 p JOIN tipo_documento d ON p.docPend_id = d.id JOIN tipo_pendencia t ON p.pend_id = t.id WHERE p.proc_id = :idProc");                                                    
                 $sql->bindParam('idProc',$_GET['idProc']);
                 if($sql->execute())
                 {

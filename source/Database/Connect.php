@@ -12,15 +12,15 @@ class Connect
     //private const DBNAME = "id12365546_formacoes";
     //private const PASSWD = "senha";
     
-    // private const HOST = "localhost";
-    // private const USER = "root";
-    // private const DBNAME = "ajustes";
-    // private const PASSWD = "";
-
-    private const HOST = "ajustes.mysql.dbaas.com.br";
-    private const USER = "ajustes";
+    private const HOST = "localhost";
+    private const USER = "root";
     private const DBNAME = "ajustes";
-    private const PASSWD = "se331@Ajustes";
+    private const PASSWD = "";
+
+    // private const HOST = "ajustes.mysql.dbaas.com.br";
+    // private const USER = "ajustes";
+    // private const DBNAME = "ajustes";
+    // private const PASSWD = "se331@Ajustes";
 
     private const OPTIONS = [
         PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8",

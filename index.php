@@ -98,7 +98,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                 <center>
                     <div class="w-25">                        
                         <div class="form-floating mb-3">
-                            <input type="text" name="matricula" class="form-control <?php echo $loginInvalid; ?>" id="floatingMatricula" />
+                            <input type="text" name="matricula" class="form-control <?php echo $loginInvalid; ?>" id="floatingMatricula" placeholder="00000" />
                             <label for="floatingMatricula">Matrícula</label>
                         </div>
                     </div>

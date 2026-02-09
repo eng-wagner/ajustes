@@ -4,6 +4,7 @@ session_start();
 
 require_once __DIR__ . "/source/autoload.php";
 
+use Source\Database\Connect;
 use Source\Instituicao;
 use Source\ItensCota;
 
@@ -65,7 +66,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
         <img src="img/folhadeinformacao.png" width="100%" alt="folha de informação" />
         <br>
         <p><b>Serviço:</b></p>
-        <p style="text-indent: 3em;">Juntamos os seguintes documentos relativos à prestação de contas do Exercício de 2024:</p>
+        <p style="text-indent: 3em;">Juntamos os seguintes documentos relativos à prestação de contas do Exercício de 2025:</p>
         <ul style="text-indent: 1em; list-style-position: inside;">
         <?php 
                 
@@ -135,12 +136,25 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
         </b>        
         </p>
 
-        <p style="text-indent: 3em;">Procedemos à análise da Prestação de Contas da <b><?= $instituicao ?></b>, dos recursos relativos ao <b><u><?= $programa ?></u></b> do exercício de 2024.</p>
+        <p style="text-indent: 3em;">Procedemos à análise da Prestação de Contas da <b><?= $instituicao ?></b>, dos recursos relativos ao <b><u><?= $programa ?></u></b> do exercício de 2025.</p>
         <p style="text-indent: 3em;">Encaminhamos o presente para que se proceda à Análise Financeira.</p>
 
-        <p class="text-center">SE-331.2, <?= $dia . ' de ' . $mes . ' de ' . $ano ?>.</p>
+        <?php
+        $sql = Connect::getInstance()->prepare("SELECT u.funcao, l.sigla FROM usuarios u JOIN localexercicio l ON u.id_local = l.id WHERE u.id = :userId");
+        $sql->bindParam("userId", $_SESSION['user_id']);
+        $sql->execute();
+        if($usuario = $sql->fetch()){
+            $uFuncao = $usuario->funcao;
+            $uSigla = $usuario->sigla;
+        }
+        $uFuncao = mb_strtolower($uFuncao,"utf-8");
+        $uFuncao = ucwords($uFuncao);
+        
+        ?>
+        <p class="text-center"><?= $uSigla .", " . $dia . ' de ' . $mes . ' de ' . $ano ?>.</p>
         <br><br>
         <p class="text-center"><?= $_SESSION['nome'] ?><br>
+        <?= $uFuncao ?><br>
         Mat <?= $_SESSION['matricula'] ?></p>
 
     </div>    

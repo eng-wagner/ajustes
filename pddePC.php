@@ -48,7 +48,8 @@ else
 
 $currentUser = $_SESSION['user_id'];
 $currentProcess = (int) $_SESSION['idProc'];
-$statusProcesso = $processoModel->abrirTramitacao($currentProcess);
+$statusProcesso = $processoModel->procStatus($currentProcess);
+
 if(empty($statusProcesso))
 {
     $currentStatus = 1;

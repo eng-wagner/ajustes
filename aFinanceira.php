@@ -115,7 +115,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                     <th style="min-width: 75px; max-width: 90px;" scope="col" class="col">DESCRIÇÃO</th>
                     <?php
                     $arrayAf = array();
-                    $sql = $pdo->prepare("SELECT s.acao_id, p.acao, s.categoria, s.saldo4, s.rp25, s.rent25, s.devl25, s.saldo25 FROM saldo_pdde s JOIN programaspdde p ON s.acao_id = p.id WHERE proc_id = :idProc ORDER BY s.acao_id");
+                    $sql = $pdo->prepare("SELECT s.acao_id, p.acao, s.categoria, s.saldo24, s.rp25, s.rent25, s.devl25, s.saldo25 FROM saldo_pdde s JOIN programaspdde p ON s.acao_id = p.id WHERE proc_id = :idProc ORDER BY s.acao_id");
                     $sql->bindParam("idProc", $_GET['idProc']);
                     $sql->execute();
                     while($af = $sql->fetch())
@@ -123,7 +123,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                         $acaoId = $af->acao_id;
                         $acao = $af->acao;
                         $categoria = $af->categoria;
-                        $saldo4 = $af->saldo4;
+                        $saldo4 = $af->saldo24;
                         $rp25 = $af->rp25;
                         $rent25 = $af->rent25;
                         $devl25 = $af->devl25;

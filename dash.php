@@ -9,42 +9,42 @@
         $total = $processos->processos;
     }
 
-    $sql = $pdo->prepare("SELECT count(status_id) AS processos FROM analise_pdde_24 WHERE status_id = 2");
+    $sql = $pdo->prepare("SELECT count(status_id) AS processos FROM analise_pdde_25 WHERE status_id = 2");
     $sql->execute();
     if($processos = $sql->fetch())
     {
         $entregue = $processos->processos;
     }
 
-    $sql = $pdo->prepare("SELECT count(status_id) AS processos FROM analise_pdde_24 WHERE status_id = 3");
+    $sql = $pdo->prepare("SELECT count(status_id) AS processos FROM analise_pdde_25 WHERE status_id = 3");
     $sql->execute();
     if($processos = $sql->fetch())
     {
         $aEx = $processos->processos;
     }
 
-    $sql = $pdo->prepare("SELECT count(status_id) AS processos FROM analise_pdde_24 WHERE status_id = 4");
+    $sql = $pdo->prepare("SELECT count(status_id) AS processos FROM analise_pdde_25 WHERE status_id = 4");
     $sql->execute();
     if($processos = $sql->fetch())
     {
         $pend = $processos->processos;
     }
 
-    $sql = $pdo->prepare("SELECT count(status_id) AS processos FROM analise_pdde_24 WHERE status_id = 5");
+    $sql = $pdo->prepare("SELECT count(status_id) AS processos FROM analise_pdde_25 WHERE status_id = 5");
     $sql->execute();
     if($processos = $sql->fetch())
     {
         $aFin = $processos->processos;
     }
 
-    $sql = $pdo->prepare("SELECT count(status_id) AS processos FROM analise_pdde_24 WHERE status_id = 6");
+    $sql = $pdo->prepare("SELECT count(status_id) AS processos FROM analise_pdde_25 WHERE status_id = 6");
     $sql->execute();
     if($processos = $sql->fetch())
     {
         $aFinConc = $processos->processos;
     }
 
-    $sql = $pdo->prepare("SELECT count(status_id) AS processos FROM analise_pdde_24 WHERE status_id = 7");
+    $sql = $pdo->prepare("SELECT count(status_id) AS processos FROM analise_pdde_25 WHERE status_id = 7");
     $sql->execute();
     if($processos = $sql->fetch())
     {
@@ -53,25 +53,25 @@
 
     $aguardando = $total - $aEx - $pend - $aFin - $aFinConc - $conclude;
 
-    $sql = $pdo->prepare("SELECT count(status_id) AS processos FROM analise_pdde_24 WHERE status_id = 7");
+    $sql = $pdo->prepare("SELECT count(status_id) AS processos FROM analise_pdde_25 WHERE status_id = 7");
     $sql->execute();
     if($processos = $sql->fetch())
     {
         $conclude = $processos->processos;
     }
 
-    $sql = $pdo->prepare("SELECT sum(saldo22) as s22, sum(rp24) as rp, sum(rent24) as rent, sum(devl24) as dev, sum(saldo24) as s24 FROM saldo_pdde;");
+    $sql = $pdo->prepare("SELECT sum(saldo24) as s24, sum(rp25) as rp, sum(rent25) as rent, sum(devl25) as dev, sum(saldo25) as s25 FROM saldo_pdde;");
     $sql->execute();
     if($saldos = $sql->fetch())
     {
-        $inicial = $saldos->s22;
+        $inicial = $saldos->s24;
         $rProprios = $saldos->rp;
         $rentabilide = $saldos->rent;
         $devolucoes = $saldos->dev;
-        $final = $saldos->s24;
+        $final = $saldos->s25;
     }
 
-    $sql = $pdo->prepare("SELECT sum(custeio) as custeio, sum(capital) as capital FROM repasse_24");
+    $sql = $pdo->prepare("SELECT sum(custeio) as custeio, sum(capital) as capital FROM repasse_25");
     $sql->execute();
     if($repasses = $sql->fetch())
     {
@@ -80,7 +80,7 @@
     }
     $repTotal = $custeio + $capital;
 
-    $sql = $pdo->prepare("SELECT sum(valor) as despesas FROM pdde_despesas_24");
+    $sql = $pdo->prepare("SELECT sum(valor) as despesas FROM pdde_despesas_25");
     $sql->execute();
     if($valor = $sql->fetch())
     {

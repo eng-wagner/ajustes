@@ -76,11 +76,11 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
         <br><br>
         <p class="text-center">(Anexo ao SB.<?= $numProc . "/" . $anoProc . "-" . $digProc ?>)</p>
         <p><b>Serviço:</b></p>
-        <p style="text-indent: 3em;">Juntamos os seguintes documentos relativos à prestação de contas do Exercício de 2024:</p>
+        <p style="text-indent: 3em;">Juntamos os seguintes documentos relativos à prestação de contas do Exercício de 2025:</p>
         <ul style="text-indent: 1em; list-style-position: inside;">
             <li>Análise Financeira da Prestação de Contas 2024 - <?= $programa ?> - <?= $instituicao ?>;</li>
-            <li>Demonstrativo Consolidado da Execução Físico-Financeira referente ao <?= $programa ?> – 2024;
-            <li>Consulta à situação da Prestação de Contas da UEx</li>
+            <li>Demonstrativo Consolidado da Execução Físico-Financeira referente ao <?= $programa ?> – 2025;
+            <li>Consulta à situação da Prestação de Contas da UEx.</li>
 
         <?php 
                        

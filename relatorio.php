@@ -248,7 +248,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                     $sigpc = "";
 
 
-                                    $stmt = Connect::getInstance()->prepare("SELECT * FROM analise_pdde_24 WHERE proc_id = :idProc");
+                                    $stmt = Connect::getInstance()->prepare("SELECT * FROM analise_pdde_25 WHERE proc_id = :idProc");
                                     $stmt->bindParam('idProc', $idProc);
                                     if ($stmt->execute()) {
                                         if ($proc = $stmt->fetch()) {

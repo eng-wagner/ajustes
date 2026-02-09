@@ -14,7 +14,7 @@ class Connect
     
     private const HOST = "localhost";
     private const USER = "root";
-    private const DBNAME = "ajustes";
+    private const DBNAME = "ajustes3";
     private const PASSWD = "";
 
     // private const HOST = "ajustes.mysql.dbaas.com.br";

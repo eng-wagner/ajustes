@@ -4,12 +4,16 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit62e10e6c8df9afc192311b196c75bb33
+class ComposerStaticInitc750bde9da0afffe47cbb2296ecef074
 {
     public static $prefixLengthsPsr4 = array (
         'Z' =>
         array (
             'ZipStream\\' => 10,
+        ),
+        'S' =>
+        array (
+            'Source\\' => 7,
         ),
         'P' =>
         array (
@@ -31,6 +35,10 @@ class ComposerStaticInit62e10e6c8df9afc192311b196c75bb33
         'ZipStream\\' =>
         array (
             0 => __DIR__ . '/..' . '/maennchen/zipstream-php/src',
+        ),
+        'Source\\' =>
+        array (
+            0 => __DIR__ . '/../..' . '/source',
         ),
         'Psr\\SimpleCache\\' =>
         array (
@@ -61,9 +69,9 @@ class ComposerStaticInit62e10e6c8df9afc192311b196c75bb33
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit62e10e6c8df9afc192311b196c75bb33::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit62e10e6c8df9afc192311b196c75bb33::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit62e10e6c8df9afc192311b196c75bb33::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInitc750bde9da0afffe47cbb2296ecef074::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInitc750bde9da0afffe47cbb2296ecef074::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInitc750bde9da0afffe47cbb2296ecef074::$classMap;
 
         }, null, ClassLoader::class);
     }

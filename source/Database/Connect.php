@@ -25,7 +25,7 @@ class Connect
             } catch (PDOException $exception) {
                 // Em produção, evite mostrar o erro exato do banco para o usuário.
                 // Idealmente, registre em um log e mostre uma mensagem genérica.
-                die("<h1>Ops! Erro de conexão.</h1><p>Por favor, tente novamente mais tarde.</p>");
+                die("<h1>Erro no Banco:</h1><p>" . $exception->getMessage() . "</p>");
             }
         }
         return self::$instance;
@@ -35,14 +35,14 @@ class Connect
      * Construtor privado previne que uma nova instância da
      * classe seja criada através do operador `new` de fora da classe.
      */
-    final private function __construct()
+    private function __construct()
     {
     }
 
     /**
      * Método clone privado previne a clonagem da instância
      */
-    final private function __clone()
+    private function __clone()
     {
     }
 }

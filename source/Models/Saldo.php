@@ -1,22 +1,13 @@
 <?php
 // source/Saldo.php
 
-namespace Source;
+namespace Source\Models;
 
 use PDO;
-use Source\Database\Connect;
+use Source\Core\Model;
 
-class Saldo
+class Saldo extends Model
 {   
-    /** @var PDO */
-    private $pdo;
-
-    public function __construct()
-    {
-        // Ao criar um objeto Banco, já pegamos a conexão com o banco.
-        $this->pdo = Connect::getInstance();
-    }
-
     /**
      * Busca todos os contas no banco de dados.
      * @return array

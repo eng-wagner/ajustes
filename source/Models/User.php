@@ -1,23 +1,14 @@
 <?php
 // source/User.php
 
-namespace Source;
+namespace Source\Models;
 
 use PDO;
-use Source\Database\Connect;
+use Source\Core\Model;
 
-class User
+class User extends Model
 {   
-    /** @var PDO */
-    private $pdo;
-
-    public function __construct()
-    {
-        // Ao criar um objeto User, já pegamos a conexão com o banco.
-        $this->pdo = Connect::getInstance();
-    }
-
-    /**
+     /**
      * Busca todos os usuários no banco de dados.
      * @return array
      */

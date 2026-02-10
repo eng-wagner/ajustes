@@ -4,9 +4,11 @@ session_start();
 
 require_once __DIR__ . "/source/autoload.php";
 
-use Source\User;
-use Source\Local;
-use Source\Logs;
+use Source\Models\User;
+use Source\Models\Local;
+use Source\Models\Logs;
+
+$userModel = new User();
 
 // Verifica se o usuário está logado
 if (empty($_SESSION['user_id'])) {
@@ -16,7 +18,7 @@ if (empty($_SESSION['user_id'])) {
 
 // Cria uma instância do nosso modelo de Usuário.
 // A conexão com o banco já é feita dentro da classe.
-$userModel = new User();
+
 $localModel = new Local();
 $logModel = new Logs();
 

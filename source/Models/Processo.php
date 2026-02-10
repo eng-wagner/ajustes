@@ -1,24 +1,15 @@
 <?php
 // source/Processo.php
 
-namespace Source;
+namespace Source\Models;
 
 use PDO;
-use Source\Database\Connect;
+use Source\Core\Model;
 use DateTimeZone;
 use DateTime;
 
-class Processo
+class Processo extends Model
 {   
-    /** @var PDO */
-    private $pdo;
-
-    public function __construct()
-    {
-        // Ao criar um objeto Processo, já pegamos a conexão com o banco.
-        $this->pdo = Connect::getInstance();
-    }
-
     /**
      * Busca todos os processos no banco de dados.
      * @return array

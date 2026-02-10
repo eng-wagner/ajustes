@@ -1,26 +1,13 @@
 <?php
 // source/Contabilidade.php
 
-namespace Source;
+namespace Source\Models;
 
 use PDO;
-use Source\Database\Connect;
+use Source\Core\Model;
 
-class Contabilidade
-{
-    /** @var PDO */
-    private $pdo;
-
-    public function __construct()
-    {
-        // Ao criar um objeto Contabilidade, já pegamos a conexão com o banco.
-        $this->pdo = Connect::getInstance();
-    }
-
-    /**
-     * Busca todos os usuários no banco de dados.
-     * @return array
-     */
+class Contabilidade extends Model
+{   
     public function all(): array
     {
         $stmt = $this->pdo->query("SELECT id, c_nome, c_telefone, c_email FROM contabilidades");

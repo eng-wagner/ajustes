@@ -1,26 +1,13 @@
 <?php
 // source/Banco.php
 
-namespace Source;
+namespace Source\Models;
 
 use PDO;
-use Source\Database\Connect;
+use Source\Core\Model;
 
-class Banco
+class Banco extends Model
 {   
-    /** @var PDO */
-    private $pdo;
-
-    public function __construct()
-    {
-        // Ao criar um objeto Banco, já pegamos a conexão com o banco.
-        $this->pdo = Connect::getInstance();
-    }
-
-    /**
-     * Busca todos os contas no banco de dados.
-     * @return array
-     */
     public function all(): array
     {
         $stmt = $this->pdo->query("SELECT * FROM banco");        

@@ -1,22 +1,13 @@
 <?php
 // source/ItensCota.php
 
-namespace Source;
+namespace Source\Models;
 
 use PDO;
-use Source\Database\Connect;
+use Source\Core\Model;
 
-class ItensCota
-{   
-    /** @var PDO */
-    private $pdo;
-
-    public function __construct()
-    {
-        // Ao criar um objeto ItensCota, já pegamos a conexão com o banco.
-        $this->pdo = Connect::getInstance();
-    }
-
+class ItensCota extends Model
+{       
     /**
      * Busca todos os usuários no banco de dados.
      * @return array

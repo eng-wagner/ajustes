@@ -4,8 +4,8 @@ session_start();
 
 require_once __DIR__ . "/source/autoload.php";
 
-use Source\User;
-use Source\Logs;
+use Source\Models\User;
+use Source\Models\Logs;
 
 $userModel = new User();
 $logModel = new Logs();
@@ -84,7 +84,7 @@ $currentUser = $_SESSION['user_id'];
         <div class="main p-3">
             <div class="text-center">
                 <h1>
-                Gerenciamento
+                Logs de Ação
                 </h1>
             </div>
             <!-- Início do Conteúdo  -->

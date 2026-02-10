@@ -4,31 +4,35 @@ session_start();
 
 require_once __DIR__ . "/source/autoload.php";
 
-use Source\Logs;
-use Source\Contabilidade;
-use Source\User;
-use Source\Instituicao;
+use Source\Models\Logs;
+use Source\Models\Contabilidade;
+use Source\Models\User;
+use Source\Models\Instituicao;
 
 // Criar instâncias do modelo.
 // A conexão com o banco já é feita dentro da classe.
 $userModel = new User();
-$contabModel = new Contabilidade();
-$logModel = new Logs();
-$instituicaoModel = new Instituicao();
 
 // Verifica se o usuário está logado
 if (empty($_SESSION['user_id'])) {
     header("Location: index.php?status=sessao_invalida");
     exit();
 }
-else
-{
-    $loggedUser = $userModel->findById($_SESSION['user_id']);
-    if ($loggedUser) {
-        $userName = $loggedUser->nome;
-        $perfil = $loggedUser->perfil;
-    }
+
+$loggedUser = $userModel->findById($_SESSION['user_id']);
+if ($loggedUser) {
+    $userName = $loggedUser->nome;
+    $perfil = $loggedUser->perfil;
+} else {
+    // Se o usuário logado não for encontrado, redireciona para a página de login
+    session_destroy();
+    header("Location: index.php?status=sessao_invalida");
+    exit();
 }
+
+$contabModel = new Contabilidade();
+$logModel = new Logs();
+$instituicaoModel = new Instituicao();
 
 $timezone = new DateTimeZone("America/Sao_Paulo");
 ?>

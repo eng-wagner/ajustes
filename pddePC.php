@@ -4,23 +4,41 @@ session_start();
 
 require_once __DIR__ . "/source/autoload.php";
 
+date_default_timezone_set("America/Sao_Paulo");
 $timezone = new DateTimeZone("America/Sao_Paulo");
 
-use Source\Contabilidade;
-use Source\Logs;
-use Source\User;
-use Source\Instituicao;
-use Source\Processo;
-use Source\Banco;
-use Source\Repasse;
-use Source\Despesa;
-use Source\Documento;
-use Source\Pendencia;
-use Source\Programa;
+use Source\Models\Contabilidade;
+use Source\Models\Logs;
+use Source\Models\User;
+use Source\Models\Instituicao;
+use Source\Models\Processo;
+use Source\Models\Banco;
+use Source\Models\Repasse;
+use Source\Models\Despesa;
+use Source\Models\Documento;
+use Source\Models\Pendencia;
+use Source\Models\Programa;
 
-// Criar instâncias do modelo.
 // A conexão com o banco já é feita dentro da classe.
 $userModel = new User();
+
+// Verifica se o usuário está logado
+if (empty($_SESSION['user_id'])) {
+    header("Location: index.php?status=sessao_invalida");
+    exit();
+}
+
+$loggedUser = $userModel->findById($_SESSION['user_id']);
+if ($loggedUser) {
+    $userName = $loggedUser->nome;
+    $perfil = $loggedUser->perfil;
+} else {
+    // Se o usuário logado não for encontrado, redireciona para a página de login
+    session_destroy();
+    header("Location: index.php?status=sessao_invalida");
+    exit();
+}
+
 $logModel = new Logs();
 $contModel = new Contabilidade();
 $instituicaoModel = new Instituicao();
@@ -32,19 +50,6 @@ $programaModel = new Programa();
 $pendenciaModel = new Pendencia();
 $documentoModel = new Documento();
 
-// Verifica se o usuário está logado
-if (empty($_SESSION['user_id'])) {
-    header("Location: index.php?status=sessao_invalida");
-    exit();
-}
-else
-{
-    $loggedUser = $userModel->findById($_SESSION['user_id']);
-    if ($loggedUser) {
-        $userName = $loggedUser->nome;
-        $perfil = $loggedUser->perfil;
-    }
-}
 
 $currentUser = $_SESSION['user_id'];
 $currentProcess = (int) $_SESSION['idProc'];

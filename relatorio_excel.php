@@ -1,23 +1,30 @@
 <?php
 
-// 1. Carrega tudo (Config + Banco + Planilha)
+// 1. Carrega o Autoload e Bibliotecas
 require __DIR__ . "/source/autoload.php";
 
-use Source\Database\Connect;
+use Source\Models\RelatorioPDDE;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
-// Limpa qualquer lixo de memória anterior para não corromper o Excel
-ob_end_clean(); 
+// Limpa buffer de saída
+if (ob_get_contents()) ob_end_clean();
 
-// Cria a planilha
+// 2. Instancia o Model
+$model = new RelatorioPDDE();
+
+// --- MUDANÇA AQUI: ---
+// Não pegamos mais filtros da URL. Passamos NULL para trazer TUDO.
+$dados = $model->buscarDadosGerais(null, null);
+
+// 3. Cria a Planilha
 $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();
-$sheet->setTitle('Relatório PDDE');
+$sheet->setTitle('Relatório Geral PDDE');
 
 // ==========================================
-// 2. Definindo o Cabeçalho (Linha 1)
+// Cabeçalhos
 // ==========================================
 $headers = [
     'A' => 'Nº Processo',
@@ -36,122 +43,65 @@ $headers = [
 
 foreach ($headers as $col => $title) {
     $sheet->setCellValue($col . '1', $title);
-    // Deixa negrito e centralizado
     $sheet->getStyle($col . '1')->getFont()->setBold(true);
     $sheet->getStyle($col . '1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 }
 
 // ==========================================
-// 3. Buscando e Preenchendo os Dados
+// Preenchendo as Linhas
 // ==========================================
-$stmt = "SELECT p.id, p.orgao, p.numero, p.ano, p.digito, p.tipo, i.instituicao 
-         FROM processos p 
-         JOIN instituicoes i ON p.instituicao_id = i.id 
-         WHERE p.tipo LIKE '%PDDE%' 
-         ORDER BY i.instituicao ASC";
+$row = 2;
 
-$query = Connect::getInstance()->prepare($stmt);
-$query->execute();
+if (!empty($dados)) {
+    foreach ($dados as $proc) {
+        
+        $numProcesso = $model->formatarProcesso($proc);
+        $status = $proc->status_nome ?? 'Aguardando Entrega';
+        
+        // Formatações
+        $entrega = $proc->data_ent ? date('d/m/Y', strtotime($proc->data_ent)) : '';
+        $sMovimento = ($proc->s_movimento == 1) ? 'Sem movimento' : '';
+        $analiseEx = $proc->data_analise_ex ? date('d/m/Y', strtotime($proc->data_analise_ex)) : '';
+        $encFinanceira = $proc->data_enc_af ? date('d/m/Y', strtotime($proc->data_enc_af)) : '';
+        $analiseFin = $proc->data_analise_fin ? date('d/m/Y', strtotime($proc->data_analise_fin)) : '';
+        $sigpc = $proc->data_sigpc ? date('d/m/Y', strtotime($proc->data_sigpc)) : '';
 
-$row = 2; // Começamos a preencher na linha 2
+        $usuarioEx = $proc->usuario_ex_nome ? explode(' ', $proc->usuario_ex_nome)[0] : '';
+        $usuarioFin = $proc->usuario_fin_nome ? explode(' ', $proc->usuario_fin_nome)[0] : '';
 
-while ($proc = $query->fetch()) {
-    
-    // -- Lógica original recuperada e limpa --
-    
-    // Busca dados da análise (Sub-query)
-    // DICA PARA O FUTURO: Isso pode ser otimizado com JOIN, mas vamos manter sua lógica por enquanto.
-    $stmtAnalise = Connect::getInstance()->prepare("SELECT * FROM analise_pdde_25 WHERE proc_id = :id");
-    $stmtAnalise->bindValue(":id", $proc->id);
-    $stmtAnalise->execute();
-    $analise = $stmtAnalise->fetch();
+        // Escreve na célula
+        $sheet->setCellValue('A' . $row, $numProcesso);
+        $sheet->setCellValue('B' . $row, $proc->tipo);
+        $sheet->setCellValue('C' . $row, $proc->instituicao);
+        $sheet->setCellValue('D' . $row, $status);
+        $sheet->setCellValue('E' . $row, $entrega);
+        $sheet->setCellValue('F' . $row, $sMovimento);
+        $sheet->setCellValue('G' . $row, $analiseEx);
+        $sheet->setCellValue('H' . $row, $usuarioEx);
+        $sheet->setCellValue('I' . $row, $encFinanceira);
+        $sheet->setCellValue('J' . $row, $analiseFin);
+        $sheet->setCellValue('K' . $row, $usuarioFin);
+        $sheet->setCellValue('L' . $row, $sigpc);
 
-    // Inicializa variáveis para não dar erro de "undefined"
-    $status = "Aguardando Entrega";
-    $entrega = "";
-    $sMovimento = "";
-    $analiseEx = "";
-    $usuarioEx = "";
-    $encFinanceira = "";
-    $analiseFin = "";
-    $usuarioFin = "";
-    $sigpc = "";
+        // Centraliza datas e nomes
+        $sheet->getStyle("E$row:L$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-    if ($analise) {
-        // Formatação de Datas (Função nativa do PHP direto na linha)
-        $entrega = $analise->data_ent ? date('d/m/Y', strtotime($analise->data_ent)) : '';
-        $analiseEx = $analise->data_analise_ex ? date('d/m/Y', strtotime($analise->data_analise_ex)) : '';
-        $encFinanceira = $analise->data_enc_af ? date('d/m/Y', strtotime($analise->data_enc_af)) : '';
-        $analiseFin = $analise->data_analise_fin ? date('d/m/Y', strtotime($analise->data_analise_fin)) : '';
-        $sigpc = $analise->data_sigpc ? date('d/m/Y', strtotime($analise->data_sigpc)) : '';
-        $sMovimento = ($analise->s_movimento == 1) ? 'Sem movimento' : '';
-
-        // Busca Status
-        if ($analise->status_id) {
-            $st = Connect::getInstance()->prepare("SELECT status_pc FROM status_processo WHERE id = :id");
-            $st->bindValue(":id", $analise->status_id);
-            $st->execute();
-            $statusData = $st->fetch();
-            if ($statusData) $status = $statusData->status_pc;
-        }
-
-        // Busca Responsável Execução
-        if ($analise->usuario_ex_id) {
-            $ue = Connect::getInstance()->prepare("SELECT nome FROM usuarios WHERE id = :id");
-            $ue->bindValue(":id", $analise->usuario_ex_id);
-            $ue->execute();
-            $userE = $ue->fetch();
-            if ($userE) $usuarioEx = explode(' ', $userE->nome)[0]; // Pega só o primeiro nome
-        }
-
-        // Busca Responsável Financeiro
-        if ($analise->usuario_fin_id) {
-            $uf = Connect::getInstance()->prepare("SELECT nome FROM usuarios WHERE id = :id");
-            $uf->bindValue(":id", $analise->usuario_fin_id);
-            $uf->execute();
-            $userF = $uf->fetch();
-            if ($userF) $usuarioFin = explode(' ', $userF->nome)[0];
-        }
+        $row++;
     }
-
-    // -- Preenchendo a Planilha --
-    
-    $numProcesso = "{$proc->orgao}.{$proc->numero}/{$proc->ano}-{$proc->digito}";
-
-    $sheet->setCellValue('A' . $row, $numProcesso);
-    $sheet->setCellValue('B' . $row, $proc->tipo);
-    $sheet->setCellValue('C' . $row, $proc->instituicao);
-    $sheet->setCellValue('D' . $row, $status);
-    $sheet->setCellValue('E' . $row, $entrega);
-    $sheet->setCellValue('F' . $row, $sMovimento);
-    $sheet->setCellValue('G' . $row, $analiseEx);
-    $sheet->setCellValue('H' . $row, $usuarioEx);
-    $sheet->setCellValue('I' . $row, $encFinanceira);
-    $sheet->setCellValue('J' . $row, $analiseFin);
-    $sheet->setCellValue('K' . $row, $usuarioFin);
-    $sheet->setCellValue('L' . $row, $sigpc);
-
-    $row++;
 }
 
-// ==========================================
-// 4. Finalização e Download
-// ==========================================
-
-// Auto-ajuste da largura das colunas
+// Auto-ajuste das colunas
 foreach (range('A', 'L') as $col) {
     $sheet->getColumnDimension($col)->setAutoSize(true);
 }
 
-// Define o nome do arquivo
-$fileName = "Relatorio_PDDE_" . date('d_m_Y') . ".xlsx";
+// Download
+$fileName = "Relatorio_Geral_" . date('d_m_Y') . ".xlsx";
 
-// Cabeçalhos HTTP para forçar o download
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment;filename="' . $fileName . '"');
 header('Cache-Control: max-age=0');
 
-// Salva e envia para o navegador
 $writer = new Xlsx($spreadsheet);
 $writer->save('php://output');
 exit;

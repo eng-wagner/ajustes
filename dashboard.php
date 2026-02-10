@@ -4,29 +4,31 @@ session_start();
 
 require_once __DIR__ . "/source/autoload.php";
 
-use Source\User;
-use Source\Instituicao;
-use Source\Processo;
+use Source\Models\User;
+use Source\Models\Instituicao;
+use Source\Models\Processo;
 
-// Criar instâncias do modelo.
-// A conexão com o banco já é feita dentro da classe.
 $userModel = new User();
-$instituicaoModel = new Instituicao();
-$processoModel = new Processo();
 
 // Verifica se o usuário está logado
 if (empty($_SESSION['user_id'])) {
     header("Location: index.php?status=sessao_invalida");
     exit();
 }
-else
-{
-    $loggedUser = $userModel->findById($_SESSION['user_id']);
-    if ($loggedUser) {
-        $userName = $loggedUser->nome;
-        $perfil = $loggedUser->perfil;
-    }
+
+$loggedUser = $userModel->findById($_SESSION['user_id']);
+if ($loggedUser) {
+    $userName = $loggedUser->nome;
+    $perfil = $loggedUser->perfil;
+} else {
+    // Se o usuário logado não for encontrado, redireciona para a página de login
+    session_destroy();
+    header("Location: index.php?status=sessao_invalida");
+    exit();
 }
+
+$instituicaoModel = new Instituicao();
+$processoModel = new Processo();
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">

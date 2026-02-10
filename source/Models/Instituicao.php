@@ -1,23 +1,14 @@
 <?php
 // source/Instituicao.php
 
-namespace Source;
+namespace Source\Models;
 
 use PDO;
-use Source\Database\Connect;
+use Source\Core\Model;
 
-class Instituicao
-{
-    /** @var PDO */
-    private $pdo;
-
-    public function __construct()
-    {
-        // Ao criar um objeto Instituicao, já pegamos a conexão com o banco.
-        $this->pdo = Connect::getInstance();
-    }
-
-        /**
+class Instituicao extends Model
+{   
+     /**
      * Busca instituição específica pelo seu ID.
      * @param int $id
      * @return Instituicao|null

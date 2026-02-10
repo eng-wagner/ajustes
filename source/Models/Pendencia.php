@@ -1,24 +1,15 @@
 <?php
 // source/Pendencia.php
 
-namespace Source;
+namespace Source\Models;
 
 use PDO;
-use Source\Database\Connect;
+use Source\Core\Model;
 use DateTimeZone;
 use DateTime;
 
-class Pendencia
+class Pendencia extends Model
 {   
-    /** @var PDO */
-    private $pdo;
-
-    public function __construct()
-    {
-        // Ao criar um objeto Pendencia, já pegamos a conexão com o banco.
-        $this->pdo = Connect::getInstance();
-    }
-
     /**
      * Busca todos os usuários no banco de dados.
      * @return array

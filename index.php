@@ -4,8 +4,8 @@ session_start();
 
 require_once __DIR__ . "/source/autoload.php";
 
-use Source\Logs;
-use Source\User;
+use Source\Models\Logs;
+use Source\Models\User;
 
 $userModel = new User();
 $logModel = new Logs();

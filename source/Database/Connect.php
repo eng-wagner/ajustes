@@ -6,56 +6,43 @@ use \PDO;
 use \PDOException;
 
 class Connect
-{   
-    //private const HOST = "localhost";
-    //private const USER = "id12365546_root";
-    //private const DBNAME = "id12365546_formacoes";
-    //private const PASSWD = "senha";
-    
-    private const HOST = "localhost";
-    private const USER = "root";
-    private const DBNAME = "ajustes3";
-    private const PASSWD = "";
-
-    // private const HOST = "ajustes.mysql.dbaas.com.br";
-    // private const USER = "ajustes";
-    // private const DBNAME = "ajustes";
-    // private const PASSWD = "se331@Ajustes";
-
-    private const OPTIONS = [
-        PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8",
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
-        PDO::ATTR_CASE => PDO::CASE_NATURAL
-    ];
-
+{
     private static $instance;
 
     public static function getInstance(): PDO
     {
         if (empty(self::$instance)) {
-            try{
+            try {
+                // Buscamos a configuração definida no arquivo config.php
+                $db = DATA_LAYER_CONFIG;
+
                 self::$instance = new PDO(
-                    "mysql:host=" . self::HOST . ";dbname=" . self::DBNAME,
-                    self::USER,
-                    self::PASSWD,
-                    self::OPTIONS
+                    "mysql:host=" . $db['host'] . ";dbname=" . $db['dbname'] . ";port=" . $db['port'],
+                    $db['username'],
+                    $db['passwd'],
+                    $db['options']
                 );
             } catch (PDOException $exception) {
-                die("<h1>Erro ao se conectar no banco de dados</h1>");
+                // Em produção, evite mostrar o erro exato do banco para o usuário.
+                // Idealmente, registre em um log e mostre uma mensagem genérica.
+                die("<h1>Ops! Erro de conexão.</h1><p>Por favor, tente novamente mais tarde.</p>");
             }
         }
-
         return self::$instance;
     }
 
+    /**
+     * Construtor privado previne que uma nova instância da
+     * classe seja criada através do operador `new` de fora da classe.
+     */
     final private function __construct()
     {
-
     }
 
-/*    final private function __clone()
+    /**
+     * Método clone privado previne a clonagem da instância
+     */
+    final private function __clone()
     {
-
-    }*/
+    }
 }

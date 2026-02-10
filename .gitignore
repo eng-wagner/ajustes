@@ -1,9 +1,8 @@
-.vscode/settings.json
-
-.vscode/sftp.json
-
+.vscode
 backup
-
+.env
 *.sql
-
+*.log
+/vendor
+config.php
 source/Database/Connect.php

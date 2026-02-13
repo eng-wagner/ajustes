@@ -4,6 +4,10 @@ session_start();
 
 require_once __DIR__ . "/source/autoload.php";
 
+date_default_timezone_set("America/Sao_Paulo");
+$timezone = new DateTimeZone("America/Sao_Paulo");
+$hoje = date('d/m/Y');
+
 use Source\Database\Connect;
 use Source\Models\Despesa;
 use Source\Models\Instituicao;
@@ -14,29 +18,35 @@ use Source\Models\Saldo;
 use Source\Models\User;
 use Source\Models\Banco;
 use Source\Models\Logs;
+use Source\Models\Analise;
+use Source\Models\Rentabilidade;
 
 $pdo = Connect::getInstance();
 
+// 1. Instancia Apenas o User inicialmente
 $userModel = new User();
 
-
-// Verifica se o usuário está logado
+// 2. Verifica Segurança IMEDIATAMENTE
 if (empty($_SESSION['user_id'])) {
     header("Location: index.php?status=sessao_invalida");
     exit();
 }
 
+// 3. Agora que temos o usuário logado, podemos buscar seus dados para usar na aplicação
 $loggedUser = $userModel->findById($_SESSION['user_id']);
 if ($loggedUser) {
     $userName = $loggedUser->nome;
     $perfil = $loggedUser->perfil;
-} else {
-    // Se o usuário logado não for encontrado, redireciona para a página de login
+} else {    
     session_destroy();
     header("Location: index.php?status=sessao_invalida");
     exit();
 }
 
+// ====================================================================
+// 4. Carregamento dos outros Models (Agora é seguro)
+// ====================================================================
+$analiseModel = new Analise();
 $processoModel = new Processo();
 $instituicaoModel = new Instituicao();
 $saldoModel = new Saldo();
@@ -44,12 +54,31 @@ $programaModel = new Programa();
 $repasseModel = new Repasse();
 $despesaModel = new Despesa();
 $bancoModel = new Banco();
+$rentabilidadeModel = new Rentabilidade();
 $logModel = new Logs();
 
 $currentUser = $_SESSION['user_id'];
 $currentProcess = (int) $_SESSION['idProc'];
 
-$timezone = new DateTimeZone("America/Sao_Paulo");
+if(isset($_SESSION['idProc'])) {
+    $idProc = (int) $_SESSION['idProc'];
+    $processo = $processoModel->findById($idProc);
+    $statusProcesso = $processoModel->procStatus($idProc);
+    $dadosAnalise = $analiseModel->findByProcessoId($idProc);
+
+    if($processo){
+        $instituicao = $instituicaoModel->findById($processo->instituicao_id);
+        $idInst = $processo->instituicao_id;
+        $instNome = $instituicao->instituicao;
+        $cnpj = $instituicaoModel->formatarCnpj($instituicao);        
+        $numProcesso = $processoModel->formatarProcesso($processo);
+        $tipoProcesso = $processo->assunto . ' - ' . $processo->tipo;        
+    }
+} else {
+    header('Location:buscar.php');
+    exit();
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -102,35 +131,6 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
         $_SESSION['sel'] = array("true","false","false","false","false");
         header("Location:termoPC.php");
     }
-
-    if (isset($currentProcess) && $currentProcess > 0) {
-
-        $proc = $processoModel->findById($currentProcess);
-        if($proc){
-            $idProc = $proc->id;
-            $orgao = $proc->orgao;
-            $numero = $proc->numero;
-            $ano = $proc->ano;
-            $digito = $proc->digito;
-            $assunto = $proc->assunto;                       
-            $tipo = $proc->tipo;
-            $idInst = $proc->instituicao_id;
-
-            $inst = $instituicaoModel->findById($idInst);
-            if($inst)
-            {
-                $instituicao = $inst->instituicao;
-                $cnpj = $inst->cnpj;                
-            }
-        }
-    }    
-    else {
-        header('Location:buscar.php');
-    }
-
-    $cnpj = substr($cnpj, 0, 2) . "." . substr($cnpj, 2, 3) . "." . substr($cnpj, 5, 3) . "/" . substr($cnpj, 8, 4) . "-" . substr($cnpj, 12, 2);
-
-    $statusProcesso = $processoModel->procStatus($currentProcess);
     
     if(empty($statusProcesso))
     {
@@ -159,25 +159,25 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                     <div class="col-6">
                         <div class="input-group input-group-sm mb-2">
                             <span class="input-group-text col-3" id="inputGroup-nomeEnt">Entidade</span>
-                            <input type="text" name="nomeEnt" value="<?php echo $instituicao; ?>" class="w-50 col-9 form-control" aria-describedby="inputGroup-nomeEnt" readonly />
+                            <input type="text" name="nomeEnt" value="<?= $instNome; ?>" class="w-50 col-9 form-control" aria-describedby="inputGroup-nomeEnt" readonly />
                         </div>
                         <div class="input-group input-group-sm mb-2">
                             <span class="input-group-text col-3" id="inputGroup-cnpj">CNPJ</span>
-                            <input type="text" name="cnpj" value="<?php echo $cnpj; ?>" class="w-50 col-9 form-control" aria-describedby="inputGroup-cnpj" readonly />
+                            <input type="text" name="cnpj" value="<?= $cnpj; ?>" class="w-50 col-9 form-control" aria-describedby="inputGroup-cnpj" readonly />
                         </div>
                         <div class="input-group input-group-sm mb-2">
                             <span class="input-group-text col-3" id="inputGroup-processo">Processo</span>
-                            <input type="text" name="campo3" value="<?= $orgao . '.' . $numero . '/' . $ano . '-' . $digito ?>" class="w-50 col-9 form-control" aria-describedby="inputGroup-processo" readonly />
+                            <input type="text" name="campo3" value="<?= $numProcesso ?>" class="w-50 col-9 form-control" aria-describedby="inputGroup-processo" readonly />
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="input-group input-group-sm mb-2">
                             <span class="input-group-text col-3" id="inputGroup-assuntoProc">Assunto</span>
-                            <input type="text" name="assuntoProc" value="<?php echo $assunto . ' - ' . $tipo; ?>" class="w-50 col-9 form-control" aria-describedby="inputGroup-assuntoProc" readonly />
+                            <input type="text" name="assuntoProc" value="<?= $tipoProcesso; ?>" class="w-50 col-9 form-control" aria-describedby="inputGroup-assuntoProc" readonly />
                         </div>
                         <div class="input-group input-group-sm mb-2">
                             <span class="input-group-text col-3" id="inputGroup-statusProc">Status</span>
-                            <input type="text" name="statusProc" value="<?php echo $statusPC; ?>" class="w-50 col-9 form-control" aria-describedby="inputGroup-statusProc" readonly />
+                            <input type="text" name="statusProc" value="<?= $statusPC; ?>" class="w-50 col-9 form-control" aria-describedby="inputGroup-statusProc" readonly />
                         </div>
                     </div>
                 </div>
@@ -447,7 +447,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                     <div class="col text-end">
                                         <input type="submit" class="btn btn-primary" value="Concluir Análise Financeira" />
                                         <?php                                        
-                                        $dataAnaliseFin = $processoModel->abrirTramitacao($currentProcess)->data_analise_fin;                                        
+                                        $dataAnaliseFin = $processoModel->abrirTramitacao($currentProcess)?->data_analise_fin;                                        
 
                                         if (isset($dataAnaliseFin) && $dataAnaliseFin != null) {
                                             echo '<a href="aFinanceira.php?idProc=' . $currentProcess . '" target="_blank" class="col-2 mx-2"><button type="button" class="btn btn-warning">Gerar Demonstrativo</button></a>';
@@ -459,7 +459,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                         </div>
                     </div>
 
-                    <!-- Modal Novo Saldo -->
+                    <!-- Modal Novo Saldo -->                    
                     <div class="modal fade modal-trigger" id="novoSaldoModal" tabindex="-1" aria-labelledby="novoSaldoModalLabel" aria-hidden="true">
                         <div class="modal-dialog modal-dialog-centered">
                             <div class="modal-content">
@@ -516,39 +516,34 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                             </div>
                         </div>
                     </div>
+
                     <?php
-                    if (isset($_REQUEST['novoSaldo']) && $_REQUEST['novoSaldo'] == true) {
-                        $sql = $pdo->prepare("SELECT * FROM saldo_pdde WHERE proc_id = ? AND acao_id = ? AND categoria = ?");
-                        $sql->bindParam(1, $_SESSION['idProc']);
-                        $sql->bindParam(2, $_POST['acao']);
-                        $sql->bindParam(3, $_POST['categoria']);
-                        $sql->execute();
-                        if ($sql->fetch()) {
-                            echo '<script>alert("ERRO! Não foi possível adicionar novo saldo. Saldo já existente!")</script>';
-                        } else {
-                            $_SESSION['navF'] = array("active", "", "", "", "", "");
-                            $_SESSION['navShowF'] = array("show active", "", "", "", "", "");
-                            $_SESSION['selF'] = array("true", "false", "false", "false", "false", "false");
-
-                            $valSaldo24SQL = str_replace("R$ ", "", $_POST['saldo24']);
-                            $valSaldo24SQL = str_replace(".", "", $valSaldo24SQL);
-                            $valSaldo24SQL = str_replace(",", ".", $valSaldo24SQL);
-
-                            $proc = $processoModel->findById($currentProcess);                            
-                            if ($proc) {
-                                $idInst = $proc->instituicao_id;
-                            }
-
-                            $sql = $pdo->prepare("INSERT INTO saldo_pdde(instituicao_id, proc_id, acao_id, categoria, saldo24) VALUES (?, ?, ?, ?, ?)");
-                            $sql->bindParam(1, $idInst);
-                            $sql->bindParam(2, $_SESSION['idProc']);
-                            $sql->bindParam(3, $_POST['acao']);
-                            $sql->bindParam(4, $_POST['categoria']);
-                            $sql->bindParam(5, $valSaldo24SQL);
-                            if ($sql->execute()) {
-                                header('Location:pddeFinanc.php');
-                            } else {
-                                echo '<script>alert("ERRO AO GRAVAR SALDO")</script>';
+                    if (isset($_REQUEST['novoSaldo']) && $_REQUEST['novoSaldo'] == true) 
+                    {
+                        if($_SERVER['REQUEST_METHOD'] == 'POST')
+                        {
+                            $postData = filter_input_array(INPUT_POST, FILTER_DEFAULT);
+                            if ($saldoModel->findSaldoByProcCatAcao($idProc, $postData)) 
+                            {
+                                echo '<script>alert("ERRO! Não foi possível adicionar novo saldo. Saldo já existente!")</script>';
+                            } 
+                            else 
+                            {
+                                $_SESSION['navF'] = array("active", "", "", "", "", "");
+                                $_SESSION['navShowF'] = array("show active", "", "", "", "", "");
+                                $_SESSION['selF'] = array("true", "false", "false", "false", "false", "false");                                                                                            
+                                
+                                if ($saldoModel->setSaldoInicial($idInst, $idProc, $postData)) {
+                                    $acao = "Inserção de Saldo Inicial - " . $idProc ;
+                                    $log = $logModel->save([
+                                        'usuario' => $_SESSION['matricula'],
+                                        'acao' => $acao
+                                        ]);
+                                    header('Location:pddeFinanc.php?status=success');
+                                    exit();
+                                } else {
+                                    echo '<script>alert("ERRO AO GRAVAR SALDO")</script>';
+                                }
                             }
                         }
                     }
@@ -771,14 +766,14 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                         }                        
 
                         ?>
-                        <a data-bs-toggle="modal" data-bs-target="#resumoModal" id="modalResumo"></a>
-                        <script language="javascript" type="text/javascript">
+                         <a data-bs-toggle="modal" data-bs-target="#resumoModal" id="modalResumo"></a>
+                         <script language="javascript" type="text/javascript">
                             window.onload = function() {
                                 document.getElementById("modalResumo").click();
                             }
                         </script>
-
-                    <?php
+                    
+                     <?php
                     }
 
                     ?>
@@ -898,23 +893,19 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                     <div class="input-group input-group-sm mb-2">
                                         <span class="input-group-text col-3" id="inputGroup-saldoInicial">Saldo Total Inicial</span>
                                         <?php
-                                        $stmt = $pdo->prepare("SELECT SUM(cc_2024) AS ccSI, SUM(pp_01_2024) AS pp01SI, SUM(pp_51_2024) AS pp51SI, SUM(spubl_2024) AS spublSI, SUM(bb_rf_cp_2024) AS bbrfSI FROM banco WHERE proc_id = :idProc");
-                                        $stmt->bindParam('idProc', $_SESSION['idProc']);
-                                        if ($stmt->execute()) {
-                                            if ($saldo = $stmt->fetch()) {
-                                                $ccSI = $saldo->ccSI;
-                                                $pp01SI = $saldo->pp01SI;
-                                                $pp51SI = $saldo->pp51SI;
-                                                $spublSI = $saldo->spublSI;
-                                                $bbrfSI = $saldo->bbrfSI;
-                                            } else {
-                                                $ccSI = 0;
-                                                $pp01SI = 0;
-                                                $pp51SI = 0;
-                                                $spublSI = 0;
-                                                $bbrfSI = 0;
-                                            }
-                                        }
+                                        if ($saldo = $bancoModel->somaBancoLY($idProc)) {
+                                            $ccSI = $saldo->ccSI;
+                                            $pp01SI = $saldo->pp01SI;
+                                            $pp51SI = $saldo->pp51SI;
+                                            $spublSI = $saldo->spublSI;
+                                            $bbrfSI = $saldo->bbrfSI;
+                                        } else {
+                                            $ccSI = 0;
+                                            $pp01SI = 0;
+                                            $pp51SI = 0;
+                                            $spublSI = 0;
+                                            $bbrfSI = 0;
+                                        }                                        
                                         $bancoInicial = $ccSI + $pp01SI + $pp51SI + $spublSI + $bbrfSI;
 
                                         ?>
@@ -930,10 +921,11 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                         $pp51SF = 0;
                                         $spublSF = 0;
                                         $bbrfSF = 0;
-                                        $stmt = $pdo->prepare("SELECT SUM(cc_2025) AS ccSF, SUM(pp_01_2025) AS pp01SF, SUM(pp_51_2025) AS pp51SF, SUM(spubl_2025) AS spublSF, SUM(bb_rf_cp_2025) AS bbrfSF FROM banco WHERE proc_id = :idProc");
-                                        $stmt->bindParam('idProc', $_SESSION['idProc']);
-                                        if ($stmt->execute()) {
-                                            if ($saldo = $stmt->fetch()) {
+
+                                        // $stmt = $pdo->prepare("SELECT SUM(cc_2025) AS ccSF, SUM(pp_01_2025) AS pp01SF, SUM(pp_51_2025) AS pp51SF, SUM(spubl_2025) AS spublSF, SUM(bb_rf_cp_2025) AS bbrfSF FROM banco WHERE proc_id = :idProc");
+                                        // $stmt->bindParam('idProc', $_SESSION['idProc']);
+                                        // if ($stmt->execute()) {
+                                            if ($saldo = $bancoModel->somaBancoCY($idProc)) {
                                                 $ccSF = $saldo->ccSF;
                                                 $pp01SF = $saldo->pp01SF;
                                                 $pp51SF = $saldo->pp51SF;
@@ -946,12 +938,12 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                                 $spublSF = 0;
                                                 $bbrfSF = 0;
                                             }
-                                        }
+                                        // }
                                         $bancoFinal = $ccSF + $pp01SF + $pp51SF + $spublSF + $bbrfSF;
 
                                         $sdConc = 0;
 
-                                        $stmt = $pdo->prepare("SELECT t.natureza, c.valorOcc FROM conciliacao c JOIN tipo_ocorrencia t ON c.occ_id = t.id WHERE proc_id = :idProc");
+                                        $stmt = $pdo->prepare("SELECT t.natureza, c.valorOcc FROM conciliacao25 c JOIN tipo_ocorrencia t ON c.occ_id = t.id WHERE proc_id = :idProc");
                                         $stmt->bindParam("idProc", $_SESSION['idProc']);
                                         $stmt->execute();
                                         while ($conc = $stmt->fetch()) {
@@ -980,7 +972,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
 
                             <div class="row">
                                 <?php
-                                $contas = $bancoModel->findByProcId($currentProcess);
+                                $contas = $bancoModel->findByProcId($idProc);
                                 if($contas) 
                                 {                                    
                                     foreach($contas as $cont):   
@@ -1222,46 +1214,21 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                         $_SESSION['navF'] = array("", "", "active", "", "", "");
                         $_SESSION['navShowF'] = array("", "", "show active", "", "", "");
                         $_SESSION['selF'] = array("false", "false", "true", "false", "false", "false");
-
-                        $fltCorrenteSQL = str_replace("R$ ", "", $_POST['corrente']);
-                        $fltCorrenteSQL = str_replace(".", "", $fltCorrenteSQL);
-                        $fltCorrenteSQL = str_replace(",", ".", $fltCorrenteSQL);
-
-                        $fltPoup01SQL = str_replace("R$ ", "", $_POST['poup01']);
-                        $fltPoup01SQL = str_replace(".", "", $fltPoup01SQL);
-                        $fltPoup01SQL = str_replace(",", ".", $fltPoup01SQL);
-
-                        $fltPoup51SQL = str_replace("R$ ", "", $_POST['poup51']);
-                        $fltPoup51SQL = str_replace(".", "", $fltPoup51SQL);
-                        $fltPoup51SQL = str_replace(",", ".", $fltPoup51SQL);
-
-                        $fltInvSPublSQL = str_replace("R$ ", "", $_POST['invSPubl']);
-                        $fltInvSPublSQL = str_replace(".", "", $fltInvSPublSQL);
-                        $fltInvSPublSQL = str_replace(",", ".", $fltInvSPublSQL);
-
-                        $fltInvBbRfSQL = str_replace("R$ ", "", $_POST['invBbRf']);
-                        $fltInvBbRfSQL = str_replace(".", "", $fltInvBbRfSQL);
-                        $fltInvBbRfSQL = str_replace(",", ".", $fltInvBbRfSQL);
-
-                        $sql = $pdo->prepare("UPDATE banco SET 
-                        cc_2025 = ?, 
-                        pp_01_2025 = ?,
-                        pp_51_2025 = ?,
-                        spubl_2025 = ?,
-                        bb_rf_cp_2025 = ?
-                        WHERE id = ? AND proc_id = ?");
-                        $sql->bindParam(1, $fltCorrenteSQL);
-                        $sql->bindParam(2, $fltPoup01SQL);
-                        $sql->bindParam(3, $fltPoup51SQL);
-                        $sql->bindParam(4, $fltInvSPublSQL);
-                        $sql->bindParam(5, $fltInvBbRfSQL);
-                        $sql->bindParam(6, $_POST['idContaM']);
-                        $sql->bindParam(7, $_SESSION['idProc']);
-                        if ($sql->execute()) {
-                            header('Location:pddeFinanc.php');
-                        } else {
-                            echo '<script>alert("ERRO!!!!")</script>';
-                        }
+                        
+                        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                            $postData = filter_input_array(INPUT_POST, FILTER_DEFAULT);                            
+                            if($bancoModel->updateBancoCY($idProc, $postData)) {
+                                $acao = "Atualização do Saldo Bancário da Conta de id " . $postData['idContaM'];
+                                $logModel->save([
+                                    'usuario' => $_SESSION['matricula'],
+                                    'acao' => $acao
+                                ]);
+                                header('Location:pddeFinanc.php?success=true');
+                                exit();
+                            } else {
+                                echo '<script>alert("ERRO!!!!")</script>';
+                            }
+                        }                       
                     }
 
                     if (isset($_GET['editBanco']) && $_GET['editBanco'] == true) {
@@ -1271,10 +1238,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                         $_SESSION['selF'] = array("false", "false", "true", "false", "false", "false");
 
 
-                        $sql = $pdo->prepare("SELECT * FROM banco WHERE id = :idConta");
-                        $sql->bindParam('idConta', $_GET['idConta']);
-                        if ($sql->execute()) {
-                            if ($saldo = $sql->fetch()) {
+                            if ($saldo = $bancoModel->findById($_GET['idConta'])) {
                                 $idContaM = $saldo->id;
                                 $agenciaM = $saldo->agencia;
                                 $contaM = $saldo->conta;
@@ -1284,8 +1248,6 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                 $fSPubAutM = $saldo->spubl_2025;
                                 $fBbRfCpM = $saldo->bb_rf_cp_2025;
                             }
-                        }
-
                     ?>
                         <a data-bs-toggle="modal" data-bs-target="#bancoModal" id="modalBanco"></a>
                         <script language="javascript" type="text/javascript">
@@ -1327,32 +1289,32 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                                 <div class="col">
                                                     <div class="input-group input-group-sm mb-2">
                                                         <span class="input-group-text col-4" id="inputGroup-CC">Conta Corrente</span>
-                                                        <input type="text" name="corrente" class="col-8 form-control" value="<?= 'R$ ' . number_format($fCorrenteM, 2, ",", ".") ?? 'R$ 0,00'; ?>" aria-describedby="inputGroup-CC" />
+                                                        <input type="text" name="corrente" class="col-8 form-control" value="<?= 'R$ ' . number_format($fCorrenteM ?? 0, 2, ",", ".") ?? 'R$ 0,00'; ?>" aria-describedby="inputGroup-CC" />
                                                     </div>
                                                 </div>
                                             </div>
                                             <div class="row">
                                                 <div class="input-group input-group-sm mb-2">
                                                     <span class="input-group-text col-4" id="inputGroup-PP01">Poupança 01</span>
-                                                    <input type="text" name="poup01" class="col-8 form-control" value="<?= 'R$ ' . number_format($fPoupanca01M, 2, ",", ".") ?? 'R$ 0,00'; ?>" aria-describedby="inputGroup-PP01" />
+                                                    <input type="text" name="poup01" class="col-8 form-control" value="<?= 'R$ ' . number_format($fPoupanca01M ?? 0, 2, ",", ".") ?? 'R$ 0,00'; ?>" aria-describedby="inputGroup-PP01" />
                                                 </div>
                                             </div>
                                             <div class="row">
                                                 <div class="input-group input-group-sm mb-2">
                                                     <span class="input-group-text col-4" id="inputGroup-PP51">Poupança 51</span>
-                                                    <input type="text" name="poup51" class="col-8 form-control" value="<?= 'R$ ' . number_format($fPoupanca51M, 2, ",", ".") ?? 'R$ 0,00'; ?>" aria-describedby="inputGroup-PP51" />
+                                                    <input type="text" name="poup51" class="col-8 form-control" value="<?= 'R$ ' . number_format($fPoupanca51M ?? 0, 2, ",", ".") ?? 'R$ 0,00'; ?>" aria-describedby="inputGroup-PP51" />
                                                 </div>
                                             </div>
                                             <div class="row">
                                                 <div class="input-group input-group-sm mb-2">
                                                     <span class="input-group-text col-4" id="inputGroup-inv">S. Público Aut.</span>
-                                                    <input type="text" name="invSPubl" class="col-8 form-control" value="<?= 'R$ ' . number_format($fSPubAutM, 2, ",", ".") ?? 'R$ 0,00'; ?>" aria-describedby="inputGroup-invSPubl" />
+                                                    <input type="text" name="invSPubl" class="col-8 form-control" value="<?= 'R$ ' . number_format($fSPubAutM ?? 0, 2, ",", ".") ?? 'R$ 0,00'; ?>" aria-describedby="inputGroup-invSPubl" />
                                                 </div>
                                             </div>
                                             <div class="row">
                                                 <div class="input-group input-group-sm mb-2">
                                                     <span class="input-group-text col-4" id="inputGroup-inv">BB RF CP Aut.</span>
-                                                    <input type="text" name="invBbRf" class="col-8 form-control" value="<?= 'R$ ' . number_format($fBbRfCpM, 2, ",", ".") ?? 'R$ 0,00'; ?>" aria-describedby="inputGroup-invBbRf" />
+                                                    <input type="text" name="invBbRf" class="col-8 form-control" value="<?= 'R$ ' . number_format($fBbRfCpM ?? 0, 2, ",", ".") ?? 'R$ 0,00'; ?>" aria-describedby="inputGroup-invBbRf" />
                                                 </div>
                                             </div>
                                         </div>
@@ -1384,32 +1346,12 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                 <div class="col">
                                     <div class="input-group input-group-sm mb-2">
                                         <span class="input-group-text col-3" id="inputGroup-conc">Rentabilidade Lançada</span>
-                                        <?php
-                                        $stmt = $pdo->prepare("SELECT SUM(jan) AS tJan, SUM(fev) AS tFev, SUM(mar) AS tMar, SUM(abr) AS tAbr, SUM(mai) AS tMai, SUM(jun) AS tJun, SUM(jul) AS tJul, SUM(ago) AS tAgo, SUM(setb) AS tSet, SUM(outb) AS tOut, SUM(nov) AS tNov, SUM(dez) AS tDez FROM rendimentos_aplfin_2025 WHERE proc_id = :idProc");
-                                        $stmt->bindParam('idProc', $_SESSION['idProc']);
-                                        if ($stmt->execute()) {
-                                            if ($value = $stmt->fetch()) {
-                                                $tJan = $value->tJan;
-                                                $tFev = $value->tFev;
-                                                $tMar = $value->tMar;
-                                                $tAbr = $value->tAbr;
-                                                $tMai = $value->tMai;
-                                                $tJun = $value->tJun;
-                                                $tJul = $value->tJul;
-                                                $tAgo = $value->tAgo;
-                                                $tSet = $value->tSet;
-                                                $tOut = $value->tOut;
-                                                $tNov = $value->tNov;
-                                                $tDez = $value->tDez;
-                                                $tRent = $tJan + $tFev + $tMar + $tAbr + $tMai + $tJun + $tJul + $tAgo + $tSet + $tOut + $tNov + $tDez;
-                                            } else {
-                                                $tRent = 0;
-                                            }
-                                        }
-                                        if (round($tRent, 2) == round($rentT, 2)) {
-                                            $backErro = "#D1E7DD";
-                                        } else {
+                                        <?php                                        
+                                        $tRent = $rentabilidadeModel->somaRendimentosCY($idProc) ?? 0.0;
+                                        if ($tRent == 0) {
                                             $backErro = "#F8D7DA";
+                                        } else {
+                                            $backErro = "#D1E7DD";
                                         }
                                         ?>
                                         <input type="text" name="rentLanc" value="R$ <?= number_format($tRent, 2, ",", "."); ?>" class="w-50 col-9 form-control" style="background-color: <?= $backErro ?>" aria-describedby="inputGroup-conc" readonly />
@@ -1417,7 +1359,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                 </div>
                             </div>
                             <br>
-                            <div class="row">
+                            <div class="row">                            
                                 <table class="table table-sm table-hover m-auto">
                                     <thead>
                                         <tr class="text-center align-middle">
@@ -1454,11 +1396,10 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                         $totalNov = 0;
                                         $totalDez = 0;
                                         $totalRentabilidade = 0;
-                                        $rTotal = 0;
-                                        $sql = $pdo->prepare("SELECT * FROM rendimentos_aplfin_2025 WHERE proc_id = :idProc");
-                                        $sql->bindParam('idProc', $_SESSION['idProc']);
-                                        if ($sql->execute()) {
-                                            while ($rent = $sql->fetch()) {
+                                        $rTotal = 0;                                        
+                                        
+                                        if ($rentabilidades = $rentabilidadeModel->findByProcId($idProc)) {
+                                            foreach ($rentabilidades as $rent) {
                                                 $idRent = $rent->id;
                                                 $idConta = $rent->conta_id;
                                                 $variacao = $rent->variacao;
@@ -1476,16 +1417,12 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                                 $rDez = $rent->dez;
 
                                                 $rTotal = $rJan + $rFev + $rMar + $rAbr + $rMai + $rJun + $rJul + $rAgo + $rSet + $rOut + $rNov + $rDez;
-
-                                                $stmt = $pdo->prepare("SELECT agencia,conta FROM banco WHERE id = :idConta");
-                                                $stmt->bindParam('idConta', $idConta);
-                                                if ($stmt->execute()) {
-                                                    if ($proc = $stmt->fetch()) {
-                                                        $agencia = $proc->agencia;
-                                                        $conta = $proc->conta;
-                                                    }
+                                                
+                                                if ($banco = $bancoModel->findById($idConta)) {
+                                                    $agencia = $banco->agencia;
+                                                    $conta = $banco->conta;
                                                 }
-
+                                                
                                                 echo '<tr class="fw-lighter align-middle">';
                                                 echo '<td class="">' . $agencia . ' / ' . $conta . '</td>';
                                                 echo '<td scope="row" class="">' . $variacao . '</td>';
@@ -1559,81 +1496,20 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                         $_SESSION['navF'] = array("", "", "", "active", "", "");
                         $_SESSION['navShowF'] = array("", "", "", "show active", "", "");
                         $_SESSION['selF'] = array("false", "false", "false", "true", "false", "false");
-
-                        $agora = new DateTime('now', $timezone);
-                        $agora = $agora->format('Y-m-d H:i:s');
-
-                        $rJanSQL = str_replace("R$ ", "", $_POST['rJan']);
-                        $rJanSQL = str_replace(".", "", $rJanSQL);
-                        $rJanSQL = str_replace(",", ".", $rJanSQL);
-
-                        $rFevSQL = str_replace("R$ ", "", $_POST['rFev']);
-                        $rFevSQL = str_replace(".", "", $rFevSQL);
-                        $rFevSQL = str_replace(",", ".", $rFevSQL);
-
-                        $rMarSQL = str_replace("R$ ", "", $_POST['rMar']);
-                        $rMarSQL = str_replace(".", "", $rMarSQL);
-                        $rMarSQL = str_replace(",", ".", $rMarSQL);
-
-                        $rAbrSQL = str_replace("R$ ", "", $_POST['rAbr']);
-                        $rAbrSQL = str_replace(".", "", $rAbrSQL);
-                        $rAbrSQL = str_replace(",", ".", $rAbrSQL);
-
-                        $rMaiSQL = str_replace("R$ ", "", $_POST['rMai']);
-                        $rMaiSQL = str_replace(".", "", $rMaiSQL);
-                        $rMaiSQL = str_replace(",", ".", $rMaiSQL);
-
-                        $rJunSQL = str_replace("R$ ", "", $_POST['rJun']);
-                        $rJunSQL = str_replace(".", "", $rJunSQL);
-                        $rJunSQL = str_replace(",", ".", $rJunSQL);
-
-                        $rJulSQL = str_replace("R$ ", "", $_POST['rJul']);
-                        $rJulSQL = str_replace(".", "", $rJulSQL);
-                        $rJulSQL = str_replace(",", ".", $rJulSQL);
-
-                        $rAgoSQL = str_replace("R$ ", "", $_POST['rAgo']);
-                        $rAgoSQL = str_replace(".", "", $rAgoSQL);
-                        $rAgoSQL = str_replace(",", ".", $rAgoSQL);
-
-                        $rSetSQL = str_replace("R$ ", "", $_POST['rSet']);
-                        $rSetSQL = str_replace(".", "", $rSetSQL);
-                        $rSetSQL = str_replace(",", ".", $rSetSQL);
-
-                        $rOutSQL = str_replace("R$ ", "", $_POST['rOut']);
-                        $rOutSQL = str_replace(".", "", $rOutSQL);
-                        $rOutSQL = str_replace(",", ".", $rOutSQL);
-
-                        $rNovSQL = str_replace("R$ ", "", $_POST['rNov']);
-                        $rNovSQL = str_replace(".", "", $rNovSQL);
-                        $rNovSQL = str_replace(",", ".", $rNovSQL);
-
-                        $rDezSQL = str_replace("R$ ", "", $_POST['rDez']);
-                        $rDezSQL = str_replace(".", "", $rDezSQL);
-                        $rDezSQL = str_replace(",", ".", $rDezSQL);
-
-                        $sql = $pdo->prepare("INSERT INTO rendimentos_aplfin_2025(conta_id, proc_id, variacao, jan, fev, mar, abr, mai, jun, jul, ago, setb, outb, nov, dez, data_hora, user_id) 
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                        $sql->bindParam(1, $_POST['agConta']);
-                        $sql->bindParam(2, $_SESSION['idProc']);
-                        $sql->bindParam(3, $_POST['variacao']);
-                        $sql->bindParam(4, $rJanSQL);
-                        $sql->bindParam(5, $rFevSQL);
-                        $sql->bindParam(6, $rMarSQL);
-                        $sql->bindParam(7, $rAbrSQL);
-                        $sql->bindParam(8, $rMaiSQL);
-                        $sql->bindParam(9, $rJunSQL);
-                        $sql->bindParam(10, $rJulSQL);
-                        $sql->bindParam(11, $rAgoSQL);
-                        $sql->bindParam(12, $rSetSQL);
-                        $sql->bindParam(13, $rOutSQL);
-                        $sql->bindParam(14, $rNovSQL);
-                        $sql->bindParam(15, $rDezSQL);
-                        $sql->bindParam(16, $agora);
-                        $sql->bindParam(17, $_SESSION['user_id']);
-                        if ($sql->execute()) {
-                            header('Location:pddeFinanc.php');
-                        } else {
-                            echo '<script>alert("ERRO!!!!")</script>';
+                        
+                        if($_SERVER['REQUEST_METHOD'] === 'POST') {
+                            $postData = filter_input_array(INPUT_POST, FILTER_DEFAULT);
+                            if($rentabilidadeModel->saveRentabilidade($idProc, $_SESSION['user_id'], $postData)) {
+                                $acao = "Inclusão de Rentabilidade no Processo de Id " . $_SESSION['idProc'];
+                                $logModel->save([
+                                    'usuario' => $_SESSION['matricula'],
+                                    'acao' => $acao
+                                ]);
+                                header('Location:pddeFinanc.php?success=true');
+                                exit();
+                            } else {
+                                echo '<script>alert("ERRO!!!!")</script>';
+                            }
                         }
                     }
 
@@ -1641,95 +1517,19 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                         $_SESSION['navF'] = array("", "", "", "active", "", "");
                         $_SESSION['navShowF'] = array("", "", "", "show active", "", "");
                         $_SESSION['selF'] = array("false", "false", "false", "true", "false", "false");
-
-                        $agora = new DateTime('now', $timezone);
-                        $agora = $agora->format('Y-m-d H:i:s');
-
-                        $rJanSQL = str_replace("R$ ", "", $_POST['rJan']);
-                        $rJanSQL = str_replace(".", "", $rJanSQL);
-                        $rJanSQL = str_replace(",", ".", $rJanSQL);
-
-                        $rFevSQL = str_replace("R$ ", "", $_POST['rFev']);
-                        $rFevSQL = str_replace(".", "", $rFevSQL);
-                        $rFevSQL = str_replace(",", ".", $rFevSQL);
-
-                        $rMarSQL = str_replace("R$ ", "", $_POST['rMar']);
-                        $rMarSQL = str_replace(".", "", $rMarSQL);
-                        $rMarSQL = str_replace(",", ".", $rMarSQL);
-
-                        $rAbrSQL = str_replace("R$ ", "", $_POST['rAbr']);
-                        $rAbrSQL = str_replace(".", "", $rAbrSQL);
-                        $rAbrSQL = str_replace(",", ".", $rAbrSQL);
-
-                        $rMaiSQL = str_replace("R$ ", "", $_POST['rMai']);
-                        $rMaiSQL = str_replace(".", "", $rMaiSQL);
-                        $rMaiSQL = str_replace(",", ".", $rMaiSQL);
-
-                        $rJunSQL = str_replace("R$ ", "", $_POST['rJun']);
-                        $rJunSQL = str_replace(".", "", $rJunSQL);
-                        $rJunSQL = str_replace(",", ".", $rJunSQL);
-
-                        $rJulSQL = str_replace("R$ ", "", $_POST['rJul']);
-                        $rJulSQL = str_replace(".", "", $rJulSQL);
-                        $rJulSQL = str_replace(",", ".", $rJulSQL);
-
-                        $rAgoSQL = str_replace("R$ ", "", $_POST['rAgo']);
-                        $rAgoSQL = str_replace(".", "", $rAgoSQL);
-                        $rAgoSQL = str_replace(",", ".", $rAgoSQL);
-
-                        $rSetSQL = str_replace("R$ ", "", $_POST['rSet']);
-                        $rSetSQL = str_replace(".", "", $rSetSQL);
-                        $rSetSQL = str_replace(",", ".", $rSetSQL);
-
-                        $rOutSQL = str_replace("R$ ", "", $_POST['rOut']);
-                        $rOutSQL = str_replace(".", "", $rOutSQL);
-                        $rOutSQL = str_replace(",", ".", $rOutSQL);
-
-                        $rNovSQL = str_replace("R$ ", "", $_POST['rNov']);
-                        $rNovSQL = str_replace(".", "", $rNovSQL);
-                        $rNovSQL = str_replace(",", ".", $rNovSQL);
-
-                        $rDezSQL = str_replace("R$ ", "", $_POST['rDez']);
-                        $rDezSQL = str_replace(".", "", $rDezSQL);
-                        $rDezSQL = str_replace(",", ".", $rDezSQL);
-
-                        $sql = $pdo->prepare("UPDATE rendimentos_aplfin_2025 SET 
-                        variacao = ?, 
-                        jan = ?, 
-                        fev = ?, 
-                        mar = ?, 
-                        abr = ?, 
-                        mai = ?, 
-                        jun = ?, 
-                        jul = ?, 
-                        ago = ?, 
-                        setb = ?, 
-                        outb = ?, 
-                        nov = ?, 
-                        dez = ?, 
-                        data_hora = ?, 
-                        user_id = ? 
-                        WHERE id = ?");
-                        $sql->bindParam(1, $_POST['variacao']);
-                        $sql->bindParam(2, $rJanSQL);
-                        $sql->bindParam(3, $rFevSQL);
-                        $sql->bindParam(4, $rMarSQL);
-                        $sql->bindParam(5, $rAbrSQL);
-                        $sql->bindParam(6, $rMaiSQL);
-                        $sql->bindParam(7, $rJunSQL);
-                        $sql->bindParam(8, $rJulSQL);
-                        $sql->bindParam(9, $rAgoSQL);
-                        $sql->bindParam(10, $rSetSQL);
-                        $sql->bindParam(11, $rOutSQL);
-                        $sql->bindParam(12, $rNovSQL);
-                        $sql->bindParam(13, $rDezSQL);
-                        $sql->bindParam(14, $agora);
-                        $sql->bindParam(15, $_SESSION['user_id']);
-                        $sql->bindParam(16, $_POST['idRentM']);
-                        if ($sql->execute()) {
-                            header('Location:pddeFinanc.php');
-                        } else {
-                            echo '<script>alert("ERRO!!!!")</script>';
+                        if($_SERVER['REQUEST_METHOD'] === 'POST') {
+                            $postData = filter_input_array(INPUT_POST, FILTER_DEFAULT);
+                            if($rentabilidadeModel->updateRentabilidade($_SESSION['user_id'], $postData)) {
+                                $acao = "Atualização da Rentabilidade id " . $postData['idRentM'];
+                                $logModel->save([
+                                    'usuario' => $_SESSION['matricula'],
+                                    'acao' => $acao
+                                ]);
+                                header('Location:pddeFinanc.php?success=true');
+                                exit();
+                            } else {
+                                echo '<script>alert("ERRO!!!!")</script>';
+                            }
                         }
                     }
 
@@ -1739,31 +1539,28 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                         $_SESSION['navShowF'] = array("", "", "", "show active", "", "");
                         $_SESSION['selF'] = array("false", "false", "false", "true", "false", "false");
 
-                        $sql = $pdo->prepare("SELECT * FROM rendimentos_aplfin_2025 WHERE id = :idRent");
-                        $sql->bindParam('idRent', $_GET['idRent']);
-                        if ($sql->execute()) {
-                            if ($rent = $sql->fetch()) {
-                                $idRentM = $rent->id;
-                                $idContaM = $rent->conta_id;
-                                $variacaoM = $rent->variacao;
-                                $rJanM = $rent->jan;
-                                $rFevM = $rent->fev;
-                                $rMarM = $rent->mar;
-                                $rAbrM = $rent->abr;
-                                $rMaiM = $rent->mai;
-                                $rJunM = $rent->jun;
-                                $rJulM = $rent->jul;
-                                $rAgoM = $rent->ago;
-                                $rSetM = $rent->setb;
-                                $rOutM = $rent->outb;
-                                $rNovM = $rent->nov;
-                                $rDezM = $rent->dez;
-                            }
+                        
+                        if ($rent = $rentabilidadeModel->findById($_GET['idRent'])) {
+                            $idRentM = $rent->id;
+                            $idContaM = $rent->conta_id;
+                            $variacaoM = $rent->variacao;
+                            $rJanM = $rent->jan;
+                            $rFevM = $rent->fev;
+                            $rMarM = $rent->mar;
+                            $rAbrM = $rent->abr;
+                            $rMaiM = $rent->mai;
+                            $rJunM = $rent->jun;
+                            $rJulM = $rent->jul;
+                            $rAgoM = $rent->ago;
+                            $rSetM = $rent->setb;
+                            $rOutM = $rent->outb;
+                            $rNovM = $rent->nov;
+                            $rDezM = $rent->dez;
                         }
 
                     ?>
-                        <a data-bs-toggle="modal" data-bs-target="#rentabilidadeModal" id="modalRentabilidade"></a>
-                        <script language="javascript" type="text/javascript">
+                         <a data-bs-toggle="modal" data-bs-target="#rentabilidadeModal" id="modalRentabilidade"></a>
+                         <script language="javascript" type="text/javascript">
                             window.onload = function() {
                                 document.getElementById("modalRentabilidade").click();
                             }
@@ -1797,14 +1594,11 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                                     <label class="input-group-text col-4" for="inputGroup-agConta">AG / Conta</label>
                                                     <?php
                                                     if (isset($idRentM) && $idRentM != null) {
-                                                        $stmt = $pdo->prepare("SELECT agencia, conta FROM banco WHERE id = :idConta");
-                                                        $stmt->bindParam('idConta', $idContaM);
-                                                        if ($stmt->execute()) {
-                                                            if ($proc = $stmt->fetch()) {
-                                                                $agencia = $proc->agencia;
-                                                                $conta = $proc->conta;
-                                                            }
+                                                        if ($proc = $bancoModel->findById($idContaM)) {
+                                                            $agencia = $proc->agencia;
+                                                            $conta = $proc->conta;
                                                         }
+                                                        
                                                     ?>
                                                         <input type="text" name="agConta" class="col-8 form-control" value="<?= $agencia . ' / ' . $conta ?>" aria-describedby="inputGroup-rMar" />
                                                     <?php
@@ -1813,17 +1607,14 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                                         <select name="agConta" class="form-select w-50 col-8" id="inputGroup-agConta" required>
                                                             <option selected disabled="disabled">Selecione...</option>
                                                             <?php
-                                                            $sql = $pdo->prepare("SELECT id, agencia, conta FROM banco WHERE proc_id = :idProc");
-                                                            $sql->bindParam('idProc', $_SESSION['idProc']);
-                                                            if ($sql->execute()) {
-                                                                while ($conta = $sql->fetch()) {
-                                                                    $idContaR = $conta->id;
-                                                                    $agenciaR = $conta->agencia;
-                                                                    $contaR = $conta->conta;
-
-                                                                    echo '<option value="' . $idContaR . '">' . $agenciaR . ' / ' . $contaR . '</option>';
-                                                                }
-                                                            }
+                                                            $contas = $bancoModel->findByProcId($_SESSION['idProc']);
+                                                            foreach ($contas as $conta):
+                                                                $idContaR = $conta->id;
+                                                                $agenciaR = $conta->agencia;
+                                                                $contaR = $conta->conta;
+                                                                echo '<option value="' . $idContaR . '">' . $agenciaR . ' / ' . $contaR . '</option>';
+                                                            endforeach;
+                                                            
                                                             ?>
                                                         </select>
                                                     <?php
@@ -1987,7 +1778,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                             <th class="col w-auto fw-semibold">Valor da Glosa</th>
                                             <th class="col w-auto fw-semibold">Editar</th>
 
-                                            <!-- GLOSAR DESPESAS -->
+                                            
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2154,13 +1945,13 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                         $valorPgReal = 'R$ ' . number_format($valorPgM, 2, ",", ".");
                     }
                 ?>
-                    <a data-bs-toggle="modal" data-bs-target="#pagamentoModal" id="modalPagamento"></a>                    
-                    <script language="javascript" type="text/javascript">
+                     <a data-bs-toggle="modal" data-bs-target="#pagamentoModal" id="modalPagamento"></a>                    
+                     <script language="javascript" type="text/javascript">
                         window.onload = function() {
                             document.getElementById("modalPagamento").click();                            
                         }
                     </script>
-                <?php
+                 <?php
                 }
 
                 if (isset($_REQUEST['glosa']) && $_REQUEST['glosa'] == true) 
@@ -2217,14 +2008,14 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                     
 
                 ?>                    
-                    <a data-bs-toggle="modal" data-bs-target="#glosaModal" id="modalGlosa"></a>
-                    <script language="javascript" type="text/javascript">
+                     <a data-bs-toggle="modal" data-bs-target="#glosaModal" id="modalGlosa"></a>
+                     <script language="javascript" type="text/javascript">
                         window.onload = function() {
                             document.getElementById("modalGlosa").click();
                         }
                     </script>
 
-                <?php
+                // <?php
                 }
 
                 ?>
@@ -2346,9 +2137,9 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                     ?>
                                     <input type="text" name="totalBanco" value="R$ <?= number_format($bancoFinal, 2, ",", ".") ?>" class="col-9 form-control" style="background-color: <?= $backErro ?>" aria-describedby="inputGroup-banco" readonly />
                                 </div>
-                                <!--
-                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#pagamentoModal">Adicionar Pagamento</button>
-                                    -->
+                                
+                                    <!-- <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#pagamentoModal">Adicionar Pagamento</button> -->
+                                
                             </div>
                         </div>
                         <br>
@@ -2373,7 +2164,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                     <tbody>
                                         <?php
                                         $totalDebit = 0;
-                                        $sql = $pdo->prepare("SELECT c.id, t.ocorrencia, t.natureza, c.descricao, c.dataOcc, c.valorOcc FROM conciliacao c JOIN tipo_ocorrencia t ON c.occ_id = t.id WHERE proc_id = :idProc");
+                                        $sql = $pdo->prepare("SELECT c.id, t.ocorrencia, t.natureza, c.descricao, c.dataOcc, c.valorOcc FROM conciliacao25 c JOIN tipo_ocorrencia t ON c.occ_id = t.id WHERE proc_id = :idProc");
                                         $sql->bindParam("idProc", $_SESSION['idProc']);
                                         $sql->execute();
                                         while ($occD = $sql->fetch()) {
@@ -2424,7 +2215,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                     <tbody>
                                         <?php
                                         $totalCred = 0;
-                                        $sql = $pdo->prepare("SELECT c.id, t.ocorrencia, t.natureza, c.descricao, c.dataOcc, c.valorOcc FROM conciliacao c JOIN tipo_ocorrencia t ON c.occ_id = t.id WHERE proc_id = :idProc");
+                                        $sql = $pdo->prepare("SELECT c.id, t.ocorrencia, t.natureza, c.descricao, c.dataOcc, c.valorOcc FROM conciliacao25 c JOIN tipo_ocorrencia t ON c.occ_id = t.id WHERE proc_id = :idProc");
                                         $sql->bindParam("idProc", $_SESSION['idProc']);
                                         $sql->execute();
                                         while ($occC = $sql->fetch()) {
@@ -2516,23 +2307,21 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                     header('Location:pddePC.php');
                 }
                 if (isset($_GET['delOcc']) && $_GET['delOcc'] == true) {                    
-                    $sql = $pdo->prepare("DELETE FROM conciliacao WHERE id = :idOcc");                   
+                    $sql = $pdo->prepare("DELETE FROM conciliacao25 WHERE id = :idOcc");                   
                     $sql->bindParam('idOcc', $_GET['idOcc']);
                     $sql->execute();
 
-                    $acao = "Deletou a ocorrência de id " . $_GET['idOcc'] . " no processo de id " . $_SESSION['idProc'];
-                    $hora = new DateTime('now',$timezone);
-                    $hora = $hora->format('Y-m-d H:i:s');
-                    $log = $pdo->prepare("INSERT INTO action_logs(usuario, acao, hora) VALUES (:usuario,:acao,:hora)");
-                    $log->bindParam('usuario',$_SESSION['matricula']);
-                    $log->bindParam('acao',$acao);
-                    $log->bindParam('hora',$hora);
-                    $log->execute();
+                    $acao = "Deletou a ocorrência de id " . $_GET['idOcc'] . " no processo de id " . $_SESSION['idProc'];                    
+                    $log = $logModel->save([
+                        'usuario' => $_SESSION['matricula'],
+                        'acao' => $acao
+                    ]);
 
                     $_SESSION['navF'] = array("", "", "", "", "", "active");
                     $_SESSION['navShowF'] = array("", "", "", "", "", "show active");
                     $_SESSION['selF'] = array("false", "false", "false", "false", "false", "true");
                     header('Location:pddeFinanc.php');
+                    exit();
                 }
 
                 ?>
@@ -2612,7 +2401,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                     $_SESSION['navShowF'] = array("", "", "", "", "", "show active");
                     $_SESSION['selF'] = array("false", "false", "false", "false", "false", "true");
 
-                    $sql = $pdo->prepare("INSERT INTO conciliacao (proc_id, occ_id, descricao, dataOcc, valorOcc, user_id, data_hora) 
+                    $sql = $pdo->prepare("INSERT INTO conciliacao25 (proc_id, occ_id, descricao, dataOcc, valorOcc, user_id, data_hora) 
                         VALUES (?,?,?,?,?,?,?)");
                     $sql->bindParam(1, $_SESSION['idProc']);
                     $sql->bindParam(2, $_POST['ocorrencia']);
@@ -2623,16 +2412,13 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                     $sql->bindParam(7, $agora);
                     if ($sql->execute()) {
 
-                        $acao = "Adicionou nova ocorrência no processo de id " . $_SESSION['idProc'];
-                        $hora = new DateTime('now',$timezone);
-                        $hora = $hora->format('Y-m-d H:i:s');
-                        $log = $pdo->prepare("INSERT INTO action_logs(usuario, acao, hora) VALUES (:usuario,:acao,:hora)");
-                        $log->bindParam('usuario',$_SESSION['matricula']);
-                        $log->bindParam('acao',$acao);
-                        $log->bindParam('hora',$hora);
-                        $log->execute();
-
+                        $acao = "Adicionou nova ocorrência no processo de id " . $_SESSION['idProc'];                                            
+                        $log = $logModel->save([
+                            'usuario' => $_SESSION['matricula'],
+                            'acao' => $acao
+                        ]);                        
                         header('Location:pddeFinanc.php');
+                        exit();
                     } else {
                         echo '<script>alert("ERRO!!!!")</script>';
                     }

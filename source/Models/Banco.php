@@ -75,6 +75,16 @@ class Banco extends Model
         return $stmt->fetchAll();        
     }
 
+    public function somaBancoLY(int $idProc): ?Banco
+    {
+        $stmt = $this->pdo->prepare("SELECT SUM(cc_2024) AS ccSI, SUM(pp_01_2024) AS pp01SI, SUM(pp_51_2024) AS pp51SI, SUM(spubl_2024) AS spublSI, SUM(bb_rf_cp_2024) AS bbrfSI FROM banco WHERE proc_id = :idProc");
+        $stmt->execute(['idProc' => $idProc]);
+        $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
+
+        $bancoData = $stmt->fetch();
+        return $bancoData ?: null;
+    }
+
     public function somaBancoCY(int $idProc): ?Banco
     {
         $stmt = $this->pdo->prepare("SELECT SUM(cc_2025) AS ccSF, SUM(pp_01_2025) AS pp01SF, SUM(pp_51_2025) AS pp51SF, SUM(spubl_2025) AS spublSF, SUM(bb_rf_cp_2025) AS bbrfSF FROM banco WHERE proc_id = :idProc");
@@ -83,6 +93,40 @@ class Banco extends Model
 
         $bancoData = $stmt->fetch();
         return $bancoData ?: null;
+    }
+
+    public function updateBancoCY(int $idProc, array $data): bool
+    {
+        $fltCorrenteSQL = str_replace("R$ ", "", $data['corrente']);
+        $fltCorrenteSQL = str_replace(".", "", $fltCorrenteSQL);
+        $fltCorrenteSQL = str_replace(",", ".", $fltCorrenteSQL);
+
+        $fltPoup01SQL = str_replace("R$ ", "", $data['poup01']);
+        $fltPoup01SQL = str_replace(".", "", $fltPoup01SQL);
+        $fltPoup01SQL = str_replace(",", ".", $fltPoup01SQL);
+
+        $fltPoup51SQL = str_replace("R$ ", "", $data['poup51']);
+        $fltPoup51SQL = str_replace(".", "", $fltPoup51SQL);
+        $fltPoup51SQL = str_replace(",", ".", $fltPoup51SQL);
+
+        $fltInvSPublSQL = str_replace("R$ ", "", $data['invSPubl']);
+        $fltInvSPublSQL = str_replace(".", "", $fltInvSPublSQL);
+        $fltInvSPublSQL = str_replace(",", ".", $fltInvSPublSQL);
+
+        $fltInvBbRfSQL = str_replace("R$ ", "", $data['invBbRf']);
+        $fltInvBbRfSQL = str_replace(".", "", $fltInvBbRfSQL);
+        $fltInvBbRfSQL = str_replace(",", ".", $fltInvBbRfSQL);
+
+        $stmt = $this->pdo->prepare("UPDATE banco SET cc_2025 = :cc, pp_01_2025 = :pp01, pp_51_2025 = :pp51, spubl_2025 = :spubl, bb_rf_cp_2025 = :bbrf WHERE id = :idConta AND proc_id = :idProc");
+        return $stmt->execute([
+            'cc' => $fltCorrenteSQL,
+            'pp01' => $fltPoup01SQL,
+            'pp51' => $fltPoup51SQL,
+            'spubl' => $fltInvSPublSQL,
+            'bbrf' => $fltInvBbRfSQL,
+            'idConta' => $data['idContaM'],
+            'idProc' => $idProc
+        ]);
     }
 
     /**

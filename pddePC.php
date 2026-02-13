@@ -299,9 +299,9 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                                                 echo '<tr>';
                                                 echo '<td scope="row">' . $agencia . '</td>';
                                                 echo '<td>' . $conta . '</td>';
-                                                echo '<td>R$ ' . number_format($sCorrenteLY, '2', ',', '.'). '</td>';
-                                                echo '<td>R$ ' . number_format($sPoupancaLY, '2', ',', '.'). '</td>';
-                                                echo '<td>R$ ' . number_format($sFundosLY, '2', ',', '.'). '</td>';
+                                                echo '<td>R$ ' . number_format($sCorrenteLY ?? 0, '2', ',', '.'). '</td>';
+                                                echo '<td>R$ ' . number_format($sPoupancaLY ?? 0, '2', ',', '.'). '</td>';
+                                                echo '<td>R$ ' . number_format($sFundosLY ?? 0, '2', ',', '.'). '</td>';
                                                 echo '</tr>';
 
                                                 $somaCorrenteLY =  $somaCorrenteLY + $sCorrenteLY;
@@ -770,7 +770,8 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                                 $_SESSION['nav'] = array("","","active","","");
                                 $_SESSION['navShow'] = array("","","show active","","");
                                 $_SESSION['sel'] = array("false","false","true","false","false");  
-                                header('Location:pddePC.php');                        
+                                header('Location:pddePC.php'); 
+                                exit();                       
                             }
                             
                             if(isset($_REQUEST['encFin']) && $_REQUEST['encFin'] == true){                                

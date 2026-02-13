@@ -44,6 +44,19 @@ class Saldo extends Model
         return $stmt->fetchAll();
     }
 
+    public function findSaldoByProcCatAcao(int $idProc, array $data): array
+    {
+        $stmt = $this->pdo->prepare("SELECT * FROM saldo_pdde WHERE proc_id = :idProc AND acao_id = :idAcao AND categoria = :cat");
+        $stmt->execute([
+            'idProc' => $idProc,
+            'idAcao' => $data['acao'],
+            'cat' => $data['categoria']
+            ]);
+        $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
+
+        return $stmt->fetchAll();
+    }
+
     public function findCYById(int $id): array
     {
         $stmt = $this->pdo->prepare("SELECT agencia, conta, cc_2025 AS cc_CY, pp_01_2025 AS pp_01_CY, pp_51_2025 AS pp_51_CY, spubl_2025 AS spubl_CY, bb_rf_cp_2025 AS bb_rf_cp_CY FROM banco WHERE proc_id = :id");
@@ -60,6 +73,22 @@ class Saldo extends Model
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
 
         return $stmt->fetchAll();        
+    }
+
+    public function setSaldoInicial(int $idInst, int $idProc, array $data): bool
+    {
+        $saldo = str_replace("R$ ", "", $data['saldo24']);
+        $saldo = str_replace(".", "", $saldo);
+        $saldo = str_replace(",", ".", $saldo);        
+
+        $stmt = $this->pdo->prepare("INSERT INTO saldo_pdde (instituicao_id, proc_id, acao_id, categoria, saldo24) VALUES (:idInst, :idProc, :idAcao, :cat, :saldo)");
+        return $stmt->execute([
+            'idInst' => $idInst,
+            'idProc' => $idProc,
+            'idAcao' => $data['acao'],
+            'cat' => $data['categoria'],
+            'saldo' => $saldo
+        ]);
     }
 
     /**

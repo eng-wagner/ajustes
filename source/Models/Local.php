@@ -14,8 +14,7 @@ class Local extends Model
      */
     public function all(): array
     {
-        $stmt = $this->pdo->query("SELECT id, sigla, nome_local FROM localexercicio ORDER BY id ASC");
-        //$stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
+        $stmt = $this->pdo->query("SELECT id, sigla, nome_local FROM localexercicio ORDER BY id ASC");        
         return $stmt->fetchAll(PDO::FETCH_CLASS, self::class);
     }
 
@@ -28,9 +27,7 @@ class Local extends Model
     {
         $stmt = $this->pdo->prepare("SELECT * FROM localexercicio WHERE id = :id");
         $stmt->execute(['id' => $id]);
-        $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
-
-        $localData = $stmt->fetch();
-        return $localData ?: null;
+        $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);       
+        return $stmt->fetch() ?: null;
     }   
 }

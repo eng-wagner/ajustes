@@ -91,9 +91,8 @@ class Processo extends Model
         $stmt = $this->pdo->prepare("SELECT * FROM analise_pdde_25 WHERE proc_id = :id");
         $stmt->execute(['id' => $id]);
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
-
-        $procData = $stmt->fetch();
-        return $procData ?: null;
+        
+        return $stmt->fetch() ?: null;
     }
 
     public function saveExecucao(array $data, int $idSts, int $idUserEx, bool $pendente, int $idProc): bool
@@ -236,6 +235,11 @@ class Processo extends Model
         
         $stmt = $this->pdo->prepare($query);
         return $stmt->execute($params);
+    }
+
+    public function formatarProcesso($p): string
+    {
+        return "{$p->orgao}.{$p->numero}/{$p->ano}-{$p->digito}";
     }
 
 

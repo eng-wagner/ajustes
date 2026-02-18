@@ -4,8 +4,8 @@ session_start();
 
 require_once __DIR__ . "/source/autoload.php";
 
-use Source\Pendencia;
-use Source\User;
+use Source\Models\Pendencia;
+use Source\Models\User;
 
 
 $userModel = new User();

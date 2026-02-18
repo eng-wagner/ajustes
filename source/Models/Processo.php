@@ -7,7 +7,7 @@ use PDO;
 use Source\Core\Model;
 use DateTimeZone;
 use DateTime;
-
+ 
 class Processo extends Model
 {   
     /**

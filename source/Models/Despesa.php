@@ -119,10 +119,6 @@ class Despesa extends Model
         $timezone = new DateTimeZone("America/Sao_Paulo");
         $hora = new DateTime('now', $timezone);
         $hora = $hora->format('Y-m-d H:i:s');
-
-        $valDespSQL = str_replace("R$ ","",$data['valDesp']);
-        $valDespSQL = str_replace(".", "", $valDespSQL);
-        $valDespSQL = str_replace(",", ".", $valDespSQL);
         
         if(isset($data['checkProg']) && $data['checkProg'] == "1"){ $chProg = 1; } else { $chProg = 0; }
         if(isset($data['checkAta']) && $data['checkAta'] == "1"){ $chAta = 1; } else { $chAta = 0; }
@@ -156,7 +152,7 @@ class Despesa extends Model
             'documento' => $data['numDoc'],
             'pagamento' => $data['numPgto'],
             'data_desp' => $data['dataDoc'],
-            'valor' => $valDespSQL,
+            'valor' => str_replace(["R$ ", ".", ","], ["", "", "."], $data['valDesp']),
             'check_prog' => $chProg,
             'check_ata' => $chAta,
             'check_enq' => $chEnq,
@@ -187,10 +183,6 @@ class Despesa extends Model
         $hora = new DateTime('now', $timezone);
         $hora = $hora->format('Y-m-d H:i:s');
 
-        $valPagoSQL = str_replace("R$ ", "", $data['valPago']);
-        $valPagoSQL = str_replace(".", "", $valPagoSQL);
-        $valPagoSQL = str_replace(",", ".", $valPagoSQL);
-
         $query = "UPDATE pdde_despesas_25 SET 
             data_pg = :dataPg, 
             valor_pg = :valorPg                
@@ -198,7 +190,7 @@ class Despesa extends Model
         
         $params = [
             'dataPg' => $data['dataPg'],
-            'valorPg' => $valPagoSQL,
+            'valorPg' => str_replace(["R$ ", ".", ","], ["", "", "."], $data['valPago']),
             'pagamento' => $pagamento,
             'idProc' => $idProc            
         ];        
@@ -208,24 +200,35 @@ class Despesa extends Model
     }
 
     public function glosarDespesa(array $data, int $idDesp): bool
-    {        
-        $valGlosaSQL = str_replace("R$ ", "", $data['valGlosa']);
-        $valGlosaSQL = str_replace(".", "", $valGlosaSQL);
-        $valGlosaSQL = str_replace(",", ".", $valGlosaSQL);
-
+    {                
         $query = "UPDATE pdde_despesas_25 SET 
             valor_gl = :valorGl, 
             motivo_gl = :motivoGl                
             WHERE id = :idDesp";
         
         $params = [            
-            'valorGl' => $valGlosaSQL,
+            'valorGl' => str_replace(["R$ ", ".", ","], ["", "", "."], $data['valGlosa']),
             'motivoGl' => $data['motivoGlosa'],
             'idDesp' => $idDesp 
         ];        
 
         $stmt = $this->pdo->prepare($query);
         return $stmt->execute($params);
+    }
+
+    public function getResumoDespesas(int $idProc): array
+    {
+        // Pega Valor, Pago e Glosado de uma vez só!
+        $stmt = $this->pdo->prepare("SELECT SUM(valor) AS despesa, SUM(valor_pg) AS pagamento, SUM(valor_gl) AS glosas FROM pdde_despesas_25 WHERE proc_id = :idProc");
+        $stmt->execute(['idProc' => $idProc]);
+        if ($res = $stmt->fetch(\PDO::FETCH_OBJ)) {
+            return [
+                'despesa' => (float) $res->despesa,
+                'pagamento' => (float) $res->pagamento,
+                'glosas' => (float) $res->glosas
+            ];
+        }
+        return ['despesa' => 0.0, 'pagamento' => 0.0, 'glosas' => 0.0];
     }
 
     public function somaByCatAcaoProc(int $idProc, int $idAcao, string $cat): float

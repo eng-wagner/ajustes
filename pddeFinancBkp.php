@@ -287,146 +287,6 @@ if (isset($_GET['delOcc']) && $_GET['delOcc'] == true) {
 }
 // ====================================================================
 // Fim das Ações de Formulário
-// ====================================================================
-
-// ====================================================================
-// AÇÃO: CONCLUIR ANÁLISE FINANCEIRA
-// ====================================================================
-if (isset($_REQUEST['concluirAf']) && $_REQUEST['concluirAf'] == 'true') {                        
-    
-    // Validação 1: O status do processo permite análise financeira?
-    if ($idStatus < 5) {
-        $_SESSION['toast_erro'] = "ERRO! O status do processo não está para análise financeira.";
-        header('Location: pddeFinanc.php');
-        exit();
-    }
-
-    // ==================================================================================
-    // CÁLCULO MATEMÁTICO DOS SALDOS (A "CONTA" QUE PEDIU)
-    // ==================================================================================
-    $arrSaldoAF = [];      // Vai guardar os dados para atualizar o banco no final
-    $saldoFinalResumo = 0; // Soma total para comparar com o Banco
-    $rentResumo = 0;       // Soma total da rentabilidade para validar
-    
-    // A. Busca linhas de saldo (Custeio, Capital, etc) e repasse vinculadas ao processo
-    // Nota: Estou a usar SQL direto para garantir que temos todos os campos necessários.    
-    $listaSaldos = $saldoModel->somaByProcId($idProc);
-    $repasse = $repasseModel->somaRepasseByProc($idProc);
-    // var_dump($listaSaldos, $listaSaldos->saldo_anterior, $repasse);
-    // die();
-    if (!empty($listaSaldos)) {
-        // B. Calcula as RECEITAS (Saldo Anterior + Repasse + Rentabilidade + Recursos Próprios)
-        $totalReceitas = ($listaSaldos->saldo_anterior + $repasse + $listaSaldos->rp + $listaSaldos->rent - $listaSaldos->devl);
-        $totalDespesas = $despesaModel->getResumoDespesas($idProc)['despesa'];
-        $totalGlosas = $despesaModel->getResumoDespesas($idProc)['glosas'];
-        $saldoFinalResumo = $totalReceitas - $totalDespesas + $totalGlosas;
-    } else {
-        $_SESSION['toast_erro'] = "ERRO CRÍTICO: Nenhum registro de saldo inicial encontrado para este processo!";
-        header('Location: pddeFinanc.php');
-        exit();
-    }
-    
-    // Prepara as variáveis para a Validação 2
-    $bancoFinal = $bancoModel->getSaldoFinal($idProc);
-    $sdConc = $conciliacaoModel->getSaldoConciliacao($idProc);
-        
-    // (Atenção: Garanta que a variável $saldoFinalT foi calculada antes disto no seu código do topo)    
-    
-    // Validação 2: Compara com o saldo final do resumo geral
-    if (round($saldoFinalResumo, 2) != round(($bancoFinal + $sdConc), 2)) {
-        $_SESSION['toast_erro'] = "ERRO! Verifique o saldo bancário final e/ou Conciliação Bancária. Diferença: R$ " . round($saldoFinalResumo, 2) - round(($bancoFinal + $sdConc), 2);
-        header('Location: pddeFinanc.php');
-        exit();
-    } 
-    
-    // Prepara as variáveis para a Validação 3
-    $totalRentabilidade = $rentabilidadeModel->getSaldoTotalRentabilidade($idProc); 
-    // Garanta que $rentT foi calculado antes
-    $rentResumo = $saldoModel->getRentFinalPDDE($idProc);
-    
-    // Validação 3: Validação da Rentabilidade                                                
-    if (round($rentResumo, 2) != round($totalRentabilidade, 2)) {
-        $_SESSION['toast_erro'] = "ERRO! Valores de rentabilidade inconsistentes! Diferença: R$ " . round($rentResumo, 2) - round($totalRentabilidade, 2);
-        header('Location: pddeFinanc.php');
-        exit();
-    }  
-    
-    // ==========================================================
-    // PREPARAÇÃO PARA GRAVAÇÃO (Cálculo Individual por Linha)
-    // ==========================================================
-    
-    // 1. Buscamos a lista COMPLETA de saldos (não a soma)
-    // Certifique-se que este método traz 'acao_id' e 'categoria' (Custeio/Capital)
-    $listaDetalhada = $saldoModel->findByProcId($idProc); 
-    
-    $arrSaldoF = []; // Array que vai guardar ID e Valor Final para o Update
-
-    if (!empty($listaDetalhada)) {
-        foreach ($listaDetalhada as $item) {
-            
-            // A. Busca o Repasse ESPECÍFICO para esta linha (Ação + Categoria)
-            // Ex: Repasse do Programa PDDE Básico (Ação 1) para Custeio
-            $repasseEspecifico = $repasseModel->getSomaRepasse($idProc, $item->acao_id, $item->categoria);
-
-            // B. Busca as Despesas ESPECÍFICAS desta linha de saldo (pelo ID do saldo)            
-            $somaDespesas = $despesaModel->somaByCatAcaoProc($idProc, $item->acao_id, $item->categoria);
-            $somaGlosas = $despesaModel->somaGlosaByAcaoProc($idProc, $item->acao_id, $item->categoria);            
-
-            // C. A Matemática da Linha:
-            // (Saldo Ant + Repasse + RP + Rent - Devl) - (Pago - Glosa)
-            // Nota: Usei os nomes que vêm do seu método findByProcId (saldo_anterior, rp, etc)
-            $receitasLinha = ($item->saldo_anterior + $repasseEspecifico + $item->rp + $item->rent - $item->devl);
-            $saidasLinha = ($somaDespesas - $somaGlosas);
-            
-            $saldoFinalCalculado = $receitasLinha - $saidasLinha;
-
-            // D. Adiciona ao array de atualização
-            $arrSaldoF[] = [
-                'id' => $item->id,
-                'saldo' => $saldoFinalCalculado
-            ];
-        }
-    }
-
-    // ==========================================================
-    // EXECUTA A GRAVAÇÃO NO BANCO DE DADOS
-    // ==========================================================
-   
-    $idSts = 6;    
-    $teveErroSalvar = false;
-
-    // 1. Atualiza os saldos individuais
-    if (!empty($arrSaldoF)) {
-        foreach ($arrSaldoF as $linha) {
-            // Usamos o método do Model para ficar limpo (ou SQL direto se preferir)
-            if (!$saldoModel->atualizarSaldoFinal($linha['id'], round($linha['saldo'], 2), $currentUser)) {
-                $teveErroSalvar = true;
-            }
-        }
-    }
-
-    if ($teveErroSalvar) {
-        $_SESSION['toast_erro'] = "ERRO AO GRAVAR SALDO!";
-        header('Location: pddeFinanc.php');
-        exit();
-    }
-
-    // 2. Atualiza o status da Análise PDDE para Concluído    
-    if ($analiseModel->updateAnalise($idSts, $currentUser, $idProc)) {
-        $logModel->save([
-            'usuario' => $_SESSION['matricula'] ?? 'Sistema',
-            'acao' => "Concluiu a Análise Financeira do processo ID " . $idProc
-        ]);
-
-        $_SESSION['toast_sucesso'] = "Análise Financeira concluída com sucesso!";
-        header('Location: pddeFinanc.php');
-        exit();
-    } else {
-        $_SESSION['toast_erro'] = "ERRO AO GRAVAR DADOS DA ANÁLISE!";
-        header('Location: pddeFinanc.php');
-        exit();
-    }  
-}
 
 // ====================================================================
 // Variável para controlar qual modal deve ser aberto (ex: 'resumoModal', 'pagamentoModal', etc.)
@@ -500,20 +360,20 @@ if (isset($_GET['editRent'])) {
     $rentData = $rentabilidadeModel->findById($idRentM);
 
     if ($rentData) {        
-        $idContaM = $rentData->conta_id;
-        $variacaoM = $rentData->variacao;
-        $rJanM = $rentData->jan;
-        $rFevM = $rentData->fev;
-        $rMarM = $rentData->mar;
-        $rAbrM = $rentData->abr;
-        $rMaiM = $rentData->mai;
-        $rJunM = $rentData->jun;
-        $rJulM = $rentData->jul;
-        $rAgoM = $rentData->ago;
-        $rSetM = $rentData->setb;
-        $rOutM = $rentData->outb;
-        $rNovM = $rentData->nov;
-        $rDezM = $rentData->dez;
+        $idContaM = $rent->conta_id;
+        $variacaoM = $rent->variacao;
+        $rJanM = $rent->jan;
+        $rFevM = $rent->fev;
+        $rMarM = $rent->mar;
+        $rAbrM = $rent->abr;
+        $rMaiM = $rent->mai;
+        $rJunM = $rent->jun;
+        $rJulM = $rent->jul;
+        $rAgoM = $rent->ago;
+        $rSetM = $rent->setb;
+        $rOutM = $rent->outb;
+        $rNovM = $rent->nov;
+        $rDezM = $rent->dez;
     }    
 } else {
     $actionRent = "?includeRent=true";
@@ -871,14 +731,78 @@ unset($_SESSION['aba_ativa']);
 
                                     if (isset($dataAnaliseFin) && $dataAnaliseFin != null) {
                                         echo '<a href="aFinanceira.php?idProc=' . $idProc . '" target="_blank" class="col-2 mx-2"><button type="button" class="btn btn-warning">Gerar Demonstrativo</button></a>';
-                                        //echo '<a href="aFinanceira.php?idProc=' . $idProc . '&pdf=1" target="_blank" class="btn btn-danger">🖨️ Gerar PDF</a>';
+                                        echo '<a href="aFinanceira.php?idProc=' . $idProc . '&pdf=1" target="_blank" class="btn btn-danger">🖨️ Gerar PDF</a>';
                                     }
+
                                     ?>
                                 </div>
                             </div>
                         </form>
                     </div>
-                    
+
+                    <!-- VALIDAÇÕES -->
+                    <?php
+
+                    if (isset($_REQUEST['concluirAf']) && $_REQUEST['concluirAf'] == true) {                        
+                        //Validação do Status do Processo
+                        if ($idStatus < 5) {
+                            echo '<script>alert("ERRO! O status do processo não está para análise financeira")</script>';
+                        } else {
+                            // Validação do lançamento do saldo bancário e conciliação
+                            
+                            // 1. Busca a soma do saldo final lançado para o processo
+                            $bancoFinal = $bancoModel->getSaldoFinal($idProc);
+
+                            // 2. Busca a soma do saldo de conciliação lançado para o processo
+                            $sdConc = $conciliacaoModel->getSaldoConciliacao($idProc);
+
+                            // 3. Compara com o saldo final do resumo geral
+                            if (round($saldoFinalT, 2) != round(($bancoFinal + $sdConc), 2)) {
+                                echo '<script>alert("ERRO! Verifique o saldo bancário final e/ou Conciliação Bancária")</script>';
+                            } else {                                
+                                //Validação da Rentabilidade                                                        
+                                $totalRentabilidade = $rentabilidadeModel->getSaldoTotalRentabilidade($idProc);                                    
+                            
+                                if (round($rentT, 2) != round($totalRentabilidade, 2)) {
+                                    echo '<script>alert("ERRO! Valores de rentabilidade inconsistentes!")</script>';
+                                } else {
+                                    // Preciso agora arrumar essa parte para MVC
+                                    $agora = new DateTime('now', $timezone);
+                                    $agora = $agora->format('Y-m-d H:i:s');
+                                    for ($iArr = 0; $iArr < count($arrSaldoF); $iArr++) {
+                                        $idCurrSaldo = $arrSaldoF[$iArr]['id'];
+                                        $currSaldo = round($arrSaldoF[$iArr]['saldo'], 2);
+                                        $sql = $pdo->prepare("UPDATE saldo_pdde SET saldo25 = ?, data_hora = ?, user_id = ? WHERE id = ?");
+                                        $sql->bindParam(1, $currSaldo);
+                                        $sql->bindParam(2, $agora);
+                                        $sql->bindParam(3, $currentUser);
+                                        $sql->bindParam(4, $idCurrSaldo);
+                                        if ($sql->execute()) {
+                                            $hoje = new DateTime('now', $timezone);
+                                            $hoje = $hoje->format('Y-m-d');
+                                            $idSts = 6;
+
+                                            $sql = $pdo->prepare("UPDATE analise_pdde_25 SET status_id = ?, usuario_fin_id = ?, data_analise_fin = ? WHERE proc_id = ?");
+                                            $sql->bindParam(1, $idSts);
+                                            $sql->bindParam(2, $currentUser);
+                                            $sql->bindParam(3, $hoje);
+                                            $sql->bindParam(4, $idProc);
+                                            if ($sql->execute()) {
+                                                header('Location:pddeFinanc.php?status=success');
+                                                exit();
+                                            } else {
+                                                echo '<script>alert("ERRO AO GRAVAR DADOS DA ANÁLISE!")</script>';
+                                            }
+                                        } else {
+                                            echo '<script>alert("ERRO AO GRAVAR SALDO!")</script>';
+                                        }
+                                    }                                  
+                                }
+                            }
+                        }
+                    }
+                    ?>                    
+
                     <!-- INGRESSO -->
                     <div class="tab-pane fade <?= $abaAtiva == 'ingresso' ? 'show active' : '' ?>" id="nav-ingresso" role="tabpanel" aria-labelledby="nav-ingresso-tab" tabindex="0">
                         <div class="container-fluid">
@@ -1104,7 +1028,7 @@ unset($_SESSION['aba_ativa']);
                                         <span class="input-group-text col-3" id="inputGroup-conc">Rentabilidade Lançada</span>
                                         <?php                                        
                                         $tRent = $rentabilidadeModel->somaRendimentosCY($idProc) ?? 0.0;
-                                        if ($tRent == 0 || $tRent != $rentT) {
+                                        if ($tRent == 0) {
                                             $backErro = "#F8D7DA";
                                         } else {
                                             $backErro = "#D1E7DD";

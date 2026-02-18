@@ -4,11 +4,45 @@ session_start();
 
 require_once __DIR__ . "/source/autoload.php";
 
-use Source\Database\Connect;
+use Source\Models\User;
+use Source\Models\Processo;
+use Source\Models\Instituicao;
+use Source\Models\Saldo;
+use Source\Models\Banco;
+use Source\Models\Conciliacao;
 
-$pdo = Connect::getInstance();
+// 1. Verificação de Segurança (Login)
+if (empty($_SESSION['user_id'])) {
+    header("Location: index.php?status=sessao_invalida");
+    exit();
+}
 
+$userModel = new User();
+$loggedUser = $userModel->findById($_SESSION['user_id']);
+
+if (!$loggedUser) {
+    session_destroy();
+    header("Location: index.php");
+    exit();
+}
+
+// 2. Configurações de Data
+date_default_timezone_set("America/Sao_Paulo");
 $timezone = new DateTimeZone("America/Sao_Paulo");
+
+// 3. Instanciando os Models para a página
+$processoModel = new Processo();
+$instituicaoModel = new Instituicao();
+$saldoModel = new Saldo();
+$bancoModel = new Banco();
+$conciliacaoModel = new Conciliacao();
+
+// Pega o ID do processo via GET (URL) de forma segura
+$idProc = isset($_GET['idProc']) ? (int)$_GET['idProc'] : 0;
+
+$arrayAf = $saldoModel->getRelatorioAF($idProc);
+$bancoFinal = $bancoModel->getSaldoFinal($idProc);
+$dadosConciliacao = $conciliacaoModel->getRelatorio($idProc);
 ?>
 
 <!DOCTYPE html>
@@ -20,20 +54,56 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Rubik+Doodle+Shadow&display=swap" rel="stylesheet">
-    <?php 
-        $stmt = $pdo->prepare("SELECT p.tipo, i.instituicao, i.cnpj FROM processos p JOIN instituicoes i ON i.id = p.instituicao_id WHERE p.id = :idProc");
-        $stmt->bindParam("idProc", $_GET['idProc']);
-        $stmt->execute();
-        if($proc = $stmt->fetch()){
-            $programa = $proc->tipo;
-            $instituicao = $proc->instituicao;
-            $cnpj = $proc->cnpj;
-            $cnpj = substr($cnpj,0,2) . "." . substr($cnpj,2,3) . "." . substr($cnpj,5,3) . "/" . substr($cnpj,8,4) . "-" . substr($cnpj,12,2);
-        }
+    <?php
+        $processo = $processoModel->findById($idProc);
+
+        if ($processo) {
+            $programa = $processo->tipo;
+            $instituicaoDados = $instituicaoModel->findById($processo->instituicao_id);
+            $instituicao = $instituicaoDados->instituicao;
+            $cnpj = $instituicaoModel->formatarCnpj($instituicaoDados);
+        } else {
+            // Se o processo não for encontrado, redireciona ou exibe uma mensagem de erro
+            header("Location: dashboard.php?status=processo_nao_encontrado");
+            exit();
+        }        
     ?>
 
     <title><?= "Análise Financeira - " . $programa . " - " . $instituicao ?></title>
-    
+    <?php if (isset($_GET['pdf']) && $_GET['pdf'] == 1): ?>
+    <style>
+        /* CSS Exclusivo para o Dompdf */
+        body { 
+            font-family: sans-serif; 
+            font-size: 11px; 
+        }
+        
+        /* Força a tabela a ocupar a página toda e desenha as margens */
+        table.tabela { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-bottom: 20px; 
+        }
+        table.tabela th, table.tabela td { 
+            border: 1px solid #000 !important; 
+            padding: 5px; 
+        }
+
+        /* Arruma o alinhamento de texto que o Bootstrap perdeu */
+        .text-center { text-align: center; }
+        .text-end { text-align: right; }
+        .align-middle { vertical-align: middle; }
+
+        /* Conserta as "Rows" e "Cols" do Bootstrap para o PDF (usando floats) */
+        .row { width: 100%; clear: both; display: block; overflow: hidden; margin-bottom: 10px; }
+        .col-4 { width: 33%; float: left; }
+        .col-8 { width: 66%; float: left; }
+        .col { width: 50%; float: left; } /* Para as assinaturas ficarem lado a lado */
+        
+        /* Espaçamento para as assinaturas */
+        .assinatura { margin-top: 40px; }
+    </style>
+    <?php endif; ?>
     <style>
         h1{
             font-family: 'Rubik Doodle Shadow', system-ui;
@@ -44,7 +114,10 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
         }
         table{
             font-size: 11px;
+            width: 100%; 
+            border-collapse: collapse;
         }
+        
         .cabecalho{
             font-size: 11px;
             line-height: 13px;
@@ -99,90 +172,15 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
         <br>
         <table class="table table-sm table-striped table-light table-bordered tabela table-responsive">
             <thead>
-                <?php
-                $sql = $pdo->prepare("SELECT COUNT(*) AS contagem FROM saldo_pdde WHERE proc_id = :idProc");
-                $sql->bindParam("idProc", $_GET['idProc']);
-                $sql->execute();
-                if($count = $sql->fetch())
-                {
-                    $contCol = $count->contagem;
-                }
-                $colTitulo = 4 + $contCol;
-                $colFoot = 3 + $contCol;
+                <?php                
+                $contCol = $saldoModel->contColumsAF($idProc);
+                $colTitulo = 5 + $contCol;
+                $colFoot = 4 + $contCol;
                 ?>
                 <tr class="text-center align-middle"><th colspan="<?= $colTitulo ?>">ANÁLISE FINANCEIRA</th></tr>
                 <tr class="text-center align-middle">
                     <th style="min-width: 75px; max-width: 90px;" scope="col" class="col">DESCRIÇÃO</th>
                     <?php
-                    $arrayAf = array();
-                    $sql = $pdo->prepare("SELECT s.acao_id, p.acao, s.categoria, s.saldo24, s.rp25, s.rent25, s.devl25, s.saldo25 FROM saldo_pdde s JOIN programaspdde p ON s.acao_id = p.id WHERE proc_id = :idProc ORDER BY s.acao_id");
-                    $sql->bindParam("idProc", $_GET['idProc']);
-                    $sql->execute();
-                    while($af = $sql->fetch())
-                    {
-                        $acaoId = $af->acao_id;
-                        $acao = $af->acao;
-                        $categoria = $af->categoria;
-                        $saldo4 = $af->saldo24;
-                        $rp25 = $af->rp25;
-                        $rent25 = $af->rent25;
-                        $devl25 = $af->devl25;
-                        $saldo25 = $af->saldo25;                        
-
-                        $stmt = $pdo->prepare("SELECT SUM(valor) AS despesa, SUM(valor_gl) AS glosa FROM pdde_despesas_25 WHERE acao_id = :idAcao AND proc_id = :idProc AND categoria = :cat");
-                        $stmt->bindParam('idAcao',$acaoId);
-                        $stmt->bindParam('idProc',$_GET['idProc']);
-                        $stmt->bindParam('cat',$categoria);
-                        if($stmt->execute())
-                        {
-                            if($value = $stmt->fetch())
-                            {
-                                $despesa = $value->despesa;
-                                $glosa = $value->glosa;
-                            }
-                        }
-                        if($categoria == "C")
-                        {
-                            $stmt = $pdo->prepare("SELECT SUM(custeio) AS repasse FROM repasse_25 WHERE acao_id = :idAcao AND proc_id = :idProc");
-                            $stmt->bindParam('idAcao',$acaoId);
-                            $stmt->bindParam('idProc',$_GET['idProc']);                                            
-                            if($stmt->execute())
-                            {
-                                if($value = $stmt->fetch())
-                                {
-                                    $repasse = $value->repasse;                                                    
-                                }
-                            }
-                        }
-                        else if($categoria == "K")
-                        {
-                            $stmt = $pdo->prepare("SELECT SUM(capital) AS repasse FROM repasse_25 WHERE acao_id = :idAcao AND proc_id = :idProc");
-                            $stmt->bindParam('idAcao',$acaoId);
-                            $stmt->bindParam('idProc',$_GET['idProc']);                                            
-                            if($stmt->execute())
-                            {
-                                if($value = $stmt->fetch())
-                                {
-                                    $repasse = $value->repasse;                                                    
-                                }
-                            }
-                        }
-                        $currAf = array(
-                            "acao" => $acao,
-                            "categoria" => $categoria,
-                            "saldoInicial" => $saldo24,
-                            "repasse" => $repasse,
-                            "rp" => $rp25,
-                            "rent" => $rent25,
-                            "devol" => $devl25,
-                            "despesa" => $despesa,                            
-                            "glosa" => $glosa,
-                            "saldoParcial" => $af->saldo25 - $glosa,
-                            "saldoFinal" => $af->saldo25
-                        );                        
-                        array_push($arrayAf,$currAf);                        
-                    }
-                    
                     for($i = 0; $i < count($arrayAf); $i++){
                         if($arrayAf[$i]['categoria'] == "C"){
                             echo   '<th style="min-width: 75px; max-width: 100px;" scope="col" class="col">CUSTEIO ' . mb_strtoupper($arrayAf[$i]['acao']) . '</th>';
@@ -450,48 +448,12 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
             <tbody>
                 <tr class="text-center align-middle">
                     <th colspan="2">Saldo da conta corrente/poupança em 31/12/2025</th>
-                    <?php
-                    $stmt = $pdo->prepare("SELECT SUM(cc_2025) AS ccSF, SUM(pp_01_2025) AS pp01SF, SUM(pp_51_2025) AS pp51SF, SUM(spubl_2025) AS spublSF, SUM(bb_rf_cp_2025) AS bbrfSF FROM banco WHERE proc_id = :idProc");                                    
-                    $stmt->bindParam('idProc',$_GET['idProc']);                                    
-                    if($stmt->execute())
-                    {
-                        if($saldo = $stmt->fetch())
-                        {
-                            $ccSF = $saldo->ccSF;
-                            $pp01SF = $saldo->pp01SF;
-                            $pp51SF = $saldo->pp51SF;
-                            $spublSF = $saldo->spublSF;
-                            $bbrfSF = $saldo->bbrfSF;
-                        }
-                        else 
-                        {
-                            $ccSF = 0;
-                            $pp01SF = 0;
-                            $pp51SF = 0;
-                            $spublSF = 0;
-                            $bbrfSF = 0;
-                        }
-                    }
-                    $bancoFinal = $ccSF + $pp01SF + $pp51SF + $spublSF + $bbrfSF;
-                    ?>
                     <th>R$ <?= number_format($bancoFinal,"2", ",", ".") ?></th>
                 </tr>
                 <tr>
                     <th colspan="2">Total de pagamentos em trânsito</th>
                     <?php
-                    $transito = 0;
-                    $sql = $pdo->prepare("SELECT occ_id, valorOcc FROM conciliacao WHERE proc_id = :idProc");
-                    $sql->bindParam("idProc", $_GET['idProc']);
-                    $sql->execute();
-                    while($occ = $sql->fetch())
-                    {
-                        $idOcc = $occ->occ_id;                        
-                        $valorTst = $occ->valorOcc;
-                        if($idOcc == 10) 
-                        {                           
-                            $transito = $transito + $valorTst;
-                        }                        
-                    }
+                    $transito = $dadosConciliacao['transito'];                    
                     if($transito != 0)
                     {
                         echo '<th class="text-center">R$ ' . number_format($transito,"2", ",", ".") . '</th>';
@@ -508,55 +470,30 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                     <th colspan="3">Valores a Débito</th>                    
                 </tr>
                 <?php
-                $debOcc = 0;
-                $sql = $pdo->prepare("SELECT occ_id, descricao, dataOcc, valorOcc FROM conciliacao WHERE proc_id = :idProc");
-                $sql->bindParam("idProc", $_GET['idProc']);
-                $sql->execute();
-                while($occ = $sql->fetch())
-                {
-                    $idOcc = $occ->occ_id;
-                    $descOcc = $occ->descricao;
-                    $dataOcc = $occ->dataOcc;
-                    $valorOcc = $occ->valorOcc;
-                    if($idOcc <= 7) 
-                    {
-                        echo '<tr>';
-                        echo '<td></td>';
-                        echo '<td>' . $descOcc . '</td>';
-                        echo '<td class="text-center">R$ ' . number_format($valorOcc,"2", ",", ".") . '</td>';
-                        echo '</tr>';
-                        $debOcc = $debOcc + $valorOcc;
-                    }
+                $debOcc = $dadosConciliacao['totalDebito'];
+                foreach($dadosConciliacao['debitos'] as $occ) {
+                    echo '<tr>';
+                    echo '<td></td>';
+                    echo '<td>' . $occ->descricao . '</td>';
+                    echo '<td class="text-center">R$ ' . number_format($occ->valorOcc,"2", ",", ".") . '</td>';
+                    echo '</tr>';
                 }
-                
+                                
                 ?>
                 <tr><td colspan="3"></td></tr>
                 <tr>                    
                     <th colspan="3">Valores a Crédito</th>
                 </tr>
                 <?php
-                $credOcc = 0;
-                $sql = $pdo->prepare("SELECT occ_id, descricao, dataOcc, valorOcc FROM conciliacao WHERE proc_id = :idProc");
-                $sql->bindParam("idProc", $_GET['idProc']);
-                $sql->execute();
-                while($occ = $sql->fetch())
-                {
-                    $idOcc = $occ->occ_id;
-                    $descOcc = $occ->descricao;
-                    $dataOcc = $occ->dataOcc;
-                    $valorOcc = $occ->valorOcc;
-                    if($idOcc == 8 || $idOcc == 9 || $idOcc == 11 || $idOcc == 12) 
-                    {
-                        echo '<tr>';
-                        echo '<td></td>';
-                        echo '<td>' . $descOcc . '</td>';
-                        echo '<td class="text-center">(R$ ' . number_format($valorOcc,"2", ",", ".") . ')</td>';
-                        echo '</tr>';
-                        $credOcc = $credOcc + $valorOcc;
-                    }
-                }
+                $credOcc = $dadosConciliacao['totalCredito'];
+                foreach($dadosConciliacao['creditos'] as $occ) {
+                    echo '<tr>';
+                    echo '<td></td>';
+                    echo '<td>' . $occ->descricao . '</td>';
+                    echo '<td class="text-center">R$ ' . number_format($occ->valorOcc,"2", ",", ".") . '</td>';
+                    echo '</tr>';
+                }                
                 ?>
-                
                 <tr><td colspan="3"></td></tr>
                 
                 <tr>
@@ -688,28 +625,20 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                 <tbody>                                    
                     <?php
                     $saldoCusteio = 0;
-                    $sql = $pdo->prepare("SELECT s.acao_id, p.acao, s.categoria, s.saldo25 FROM saldo_pdde s JOIN programaspdde p ON s.acao_id = p.id WHERE proc_id = :idProc ORDER BY s.acao_id");
-                    $sql->bindParam("idProc", $_GET['idProc']);
-                    $sql->execute();
-                    while($af = $sql->fetch())
-                    {
-                        $acaoId = $af->acao_id;
-                        $acao = $af->acao;
-                        $categoria = $af->categoria;                        
-                        $saldo25 = $af->saldo25;                        
-                        
-                        if($categoria == "C")
+                    foreach($arrayAf as $af)
+                    {                        
+                        if($af['categoria'] == "C")
                         {
                             echo '<tr class="align-middle">';
                             echo '<td style="min-width: 15px;"></td>';
-                            echo '<th style="min-width: 75px; max-width: 100px;" scope="col" class="col">CUSTEIO ' . mb_strtoupper($acao) . '</th>';
+                            echo '<th style="min-width: 75px; max-width: 100px;" scope="col" class="col">CUSTEIO ' . mb_strtoupper($af['acao']) . '</th>';
                             echo '<td></td>';
-                            echo '<td style="min-width: 75px; max-width: 100px;" scope="col" class="col text-center">R$ ' . number_format($saldo25, "2", ",", ".") . '</td>';
+                            echo '<td style="min-width: 75px; max-width: 100px;" scope="col" class="col text-center">R$ ' . number_format($af['saldoFinal'], "2", ",", ".") . '</td>';
                             echo '<td></td>';
                             echo '</tr>';
-                            $saldoCusteio = $saldoCusteio + $saldo25;
+                            $saldoCusteio += $af['saldoFinal'];
                         }                                            
-                    }                    
+                    }                                        
                     ?>                    
                     <tr>
                         <td style="min-width: 15px;"></td>
@@ -721,28 +650,20 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                     
                     <?php
                     $saldoCapital = 0;
-                    $sql = $pdo->prepare("SELECT s.acao_id, p.acao, s.categoria, s.saldo25 FROM saldo_pdde s JOIN programaspdde p ON s.acao_id = p.id WHERE proc_id = :idProc ORDER BY s.acao_id");
-                    $sql->bindParam("idProc", $_GET['idProc']);
-                    $sql->execute();
-                    while($af = $sql->fetch())
-                    {
-                        $acaoId = $af->acao_id;
-                        $acao = $af->acao;
-                        $categoria = $af->categoria;                        
-                        $saldo25 = $af->saldo25;                        
-                        
-                        if($categoria == "K")
+                    foreach($arrayAf as $af)
+                    {                        
+                        if($af['categoria'] == "K")
                         {
                             echo '<tr class="align-middle">';
                             echo '<td style="min-width: 15px;"></td>';
-                            echo '<th style="min-width: 75px; max-width: 100px;" scope="col" class="col">CAPITAL ' . mb_strtoupper($acao) . '</th>';
-                            echo '<td></td>';                           
-                            echo '<td style="min-width: 75px; max-width: 100px;" scope="col" class="col text-center">R$ ' . number_format($saldo25, "2", ",", ".") . '</td>';
+                            echo '<th style="min-width: 75px; max-width: 100px;" scope="col" class="col">CAPITAL ' . mb_strtoupper($af['acao']) . '</th>';
+                            echo '<td></td>';
+                            echo '<td style="min-width: 75px; max-width: 100px;" scope="col" class="col text-center">R$ ' . number_format($af['saldoFinal'], "2", ",", ".") . '</td>';
                             echo '<td></td>';
                             echo '</tr>';
-                            $saldoCapital = $saldoCapital + $saldo25;
-                        }                        
-                    }                    
+                            $saldoCapital += $af['saldoFinal'];
+                        }                                            
+                    }                                      
                     ?>                    
                     <tr>
                         <td style="min-width: 15px;"></td>
@@ -802,5 +723,36 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
 </body>
 </html>
 <?php
-ob_flush();
+// Pega todo o HTML da página e limpa o buffer
+$html = ob_get_clean(); 
+
+// 🚨 LINHA DE TESTE: Se quiser testar, descomente a linha abaixo. 
+// Se aparecer essa mensagem na tela, é porque o ob_start() não gravou o HTML.
+// if (empty($html)) { die("ERRO: O HTML está vazio! Verifique se ob_start() está na linha 2."); }
+
+if (isset($_GET['pdf']) && $_GET['pdf'] == 1) {
+    
+    // Instancia o Dompdf com a opção de ler imagens ativada
+    $options = new \Dompdf\Options();
+    $options->set('isRemoteEnabled', true);
+    
+    $dompdf = new \Dompdf\Dompdf($options);
+    
+    // Carrega o HTML
+    $dompdf->loadHtml($html);
+    
+    // Configura o Papel
+    $dompdf->setPaper('A4', 'portrait');
+    
+    // Renderiza o PDF
+    $dompdf->render();
+    
+    // Imprime na tela ou baixa
+    $dompdf->stream("Analise_Financeira.pdf", ["Attachment" => false]); 
+    exit();
+    
+} else {
+    // Se não for PDF, imprime a página normal
+    echo $html; 
+}
 ?>

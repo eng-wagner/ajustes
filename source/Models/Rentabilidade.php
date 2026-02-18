@@ -33,23 +33,18 @@ class Rentabilidade extends Model
     //  * @param int $id
     //  * @return Banco|null
     //  */
-    // public function findLYById(int $id): array
-    // {
-    //     $stmt = $this->pdo->prepare("SELECT agencia, conta, cc_2024 AS cc_LY, pp_01_2024 AS pp_01_LY, pp_51_2024 AS pp_51_LY, spubl_2024 AS spubl_LY, bb_rf_cp_2024 AS bb_rf_cp_LY FROM banco WHERE proc_id = :id");
-    //     $stmt->execute(['id' => $id]);
-    //     $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
-
-    //     return $stmt->fetchAll();
-    // }
-
-    // public function findCYById(int $id): array
-    // {
-    //     $stmt = $this->pdo->prepare("SELECT agencia, conta, cc_2025 AS cc_CY, pp_01_2025 AS pp_01_CY, pp_51_2025 AS pp_51_CY, spubl_2025 AS spubl_CY, bb_rf_cp_2025 AS bb_rf_cp_CY FROM banco WHERE proc_id = :id");
-    //     $stmt->execute(['id' => $id]);
-    //     $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
-
-    //     return $stmt->fetchAll();
-    // }
+    public function getSaldoTotalRentabilidade(int $idProc): float
+    {
+        // Uma única linha de SQL que já soma todos os 12 meses!
+        $sql = "SELECT SUM(jan + fev + mar + abr + mai + jun + jul + ago + setb + outb + nov + dez) as total FROM rendimentos_aplfin_2025 WHERE proc_id = :idProc";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['idProc' => $idProc]);
+        
+        if ($res = $stmt->fetch(\PDO::FETCH_OBJ)) {
+            return (float) $res->total;
+        }
+        return 0.0;
+    }
 
     public function findByProcId(int $id): array
     {        

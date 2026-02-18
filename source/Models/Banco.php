@@ -75,58 +75,39 @@ class Banco extends Model
         return $stmt->fetchAll();        
     }
 
-    public function somaBancoLY(int $idProc): ?Banco
+    public function somaBancoLY(int $idProc): float
     {
         $stmt = $this->pdo->prepare("SELECT SUM(cc_2024) AS ccSI, SUM(pp_01_2024) AS pp01SI, SUM(pp_51_2024) AS pp51SI, SUM(spubl_2024) AS spublSI, SUM(bb_rf_cp_2024) AS bbrfSI FROM banco WHERE proc_id = :idProc");
         $stmt->execute(['idProc' => $idProc]);
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
 
-        $bancoData = $stmt->fetch();
-        return $bancoData ?: null;
+        if($saldo = $stmt->fetch(PDO::FETCH_OBJ)){
+            return (float)$saldo->ccSI + (float)$saldo->pp01SI + (float)$saldo->pp51SI + (float)$saldo->spublSI + (float)$saldo->bbrfSI;
+        }
+        return 0.0;
     }
 
-    public function somaBancoCY(int $idProc): ?Banco
+    public function somaBancoCY(int $idProc): float
     {
         $stmt = $this->pdo->prepare("SELECT SUM(cc_2025) AS ccSF, SUM(pp_01_2025) AS pp01SF, SUM(pp_51_2025) AS pp51SF, SUM(spubl_2025) AS spublSF, SUM(bb_rf_cp_2025) AS bbrfSF FROM banco WHERE proc_id = :idProc");
         $stmt->execute(['idProc' => $idProc]);
         $stmt->setFetchMode(PDO::FETCH_CLASS, self::class);
 
-        $bancoData = $stmt->fetch();
-        return $bancoData ?: null;
+        if ($saldo = $stmt->fetch(PDO::FETCH_OBJ)) {
+            return (float)$saldo->ccSF + (float)$saldo->pp01SF + (float)$saldo->pp51SF + (float)$saldo->spublSF + (float)$saldo->bbrfSF;
+        }
+        return 0.0;
     }
 
-    public function updateBancoCY(int $idProc, array $data): bool
+    public function getSaldoFinal(int $idProc): float
     {
-        $fltCorrenteSQL = str_replace("R$ ", "", $data['corrente']);
-        $fltCorrenteSQL = str_replace(".", "", $fltCorrenteSQL);
-        $fltCorrenteSQL = str_replace(",", ".", $fltCorrenteSQL);
-
-        $fltPoup01SQL = str_replace("R$ ", "", $data['poup01']);
-        $fltPoup01SQL = str_replace(".", "", $fltPoup01SQL);
-        $fltPoup01SQL = str_replace(",", ".", $fltPoup01SQL);
-
-        $fltPoup51SQL = str_replace("R$ ", "", $data['poup51']);
-        $fltPoup51SQL = str_replace(".", "", $fltPoup51SQL);
-        $fltPoup51SQL = str_replace(",", ".", $fltPoup51SQL);
-
-        $fltInvSPublSQL = str_replace("R$ ", "", $data['invSPubl']);
-        $fltInvSPublSQL = str_replace(".", "", $fltInvSPublSQL);
-        $fltInvSPublSQL = str_replace(",", ".", $fltInvSPublSQL);
-
-        $fltInvBbRfSQL = str_replace("R$ ", "", $data['invBbRf']);
-        $fltInvBbRfSQL = str_replace(".", "", $fltInvBbRfSQL);
-        $fltInvBbRfSQL = str_replace(",", ".", $fltInvBbRfSQL);
-
-        $stmt = $this->pdo->prepare("UPDATE banco SET cc_2025 = :cc, pp_01_2025 = :pp01, pp_51_2025 = :pp51, spubl_2025 = :spubl, bb_rf_cp_2025 = :bbrf WHERE id = :idConta AND proc_id = :idProc");
-        return $stmt->execute([
-            'cc' => $fltCorrenteSQL,
-            'pp01' => $fltPoup01SQL,
-            'pp51' => $fltPoup51SQL,
-            'spubl' => $fltInvSPublSQL,
-            'bbrf' => $fltInvBbRfSQL,
-            'idConta' => $data['idContaM'],
-            'idProc' => $idProc
-        ]);
+        $stmt = $this->pdo->prepare("SELECT SUM(cc_2025) AS ccSF, SUM(pp_01_2025) AS pp01SF, SUM(pp_51_2025) AS pp51SF, SUM(spubl_2025) AS spublSF, SUM(bb_rf_cp_2025) AS bbrfSF FROM banco WHERE proc_id = :idProc");        
+        $stmt->execute(['idProc' => $idProc]);
+        
+        if ($saldo = $stmt->fetch(PDO::FETCH_OBJ)) {
+            return (float)$saldo->ccSF + (float)$saldo->pp01SF + (float)$saldo->pp51SF + (float)$saldo->spublSF + (float)$saldo->bbrfSF;
+        }
+        return 0.0;
     }
 
     /**
@@ -134,15 +115,15 @@ class Banco extends Model
      * @param array $data (dados vindos do formulário, ex: $_POST)
      * @return bool
      */
-    public function save(array $data): bool
+    public function saveBanco(int $idProc, ?int $idInst = null, array $data): bool
     {
         // Se o ID existir nos dados, é uma atualização (UPDATE).
-        if (!empty($data['idProc'])) {
-            return $this->update($data);
+        if (!empty($data['idContaM'])) {
+            return $this->update($idProc, $data);
         }
 
         // Se não, é uma criação (INSERT).
-        return $this->create($data);
+        return $this->create($idProc, $idInst, $data);
     }
 
     /**
@@ -150,17 +131,29 @@ class Banco extends Model
      * @param array $data
      * @return bool
      */
-    private function create(array $data): bool
+    private function create(int $idProc, int $idInst, array $data): bool
     {           
-        $stmt = $this->pdo->prepare(
-            "INSERT INTO banco (orgao, numero, ano, digito, assunto, tipo, detalhamento, instituicao_id) 
-             VALUES (:orgao, :numero, :ano, :digito, :assunto, :tipo, :detalhamento, :instituicao_id)"
-        );
-        
+        $nomeBanco = "Banco do Brasil";
+        $saldoFinal = 0;       
+
+        $stmt = $this->pdo->prepare("INSERT INTO banco (instituicao_id, proc_id, banco, agencia, conta, cc_2024, cc_2025, pp_01_2024, pp_01_2025, pp_51_2024, pp_51_2025, spubl_2024, spubl_2025, bb_rf_cp_2024, bb_rf_cp_2025) 
+        VALUES (:idInst, :idProc, :banco, :agencia, :conta, :ccLY, :ccCY, :pp01LY, :pp01CY, :pp51LY, :pp51CY, :spubLY, :spubCY, :bbrfLY, :bbrfCY)");
         return $stmt->execute([
-            'orgao' => $data['docNome'],
-            //'numero' => $checkTc,
-            //'ano' => $checkPdde
+            'idInst' => $idInst, 
+            'idProc' => $idProc,
+            'banco' => $nomeBanco, 
+            'agencia' => $data['novaAgencia'], 
+            'conta' => $data['novaConta'], 
+            'ccLY' => str_replace(["R$ ", ".", ","], ["", "", "."], $data['siCorrente']), 
+            'ccCY' => $saldoFinal, 
+            'pp01LY' => str_replace(["R$ ", ".", ","], ["", "", "."], $data['siPoup01']),
+            'pp01CY' => $saldoFinal, 
+            'pp51LY' => str_replace(["R$ ", ".", ","], ["", "", "."], $data['siPoup51']), 
+            'pp51CY' => $saldoFinal, 
+            'spubLY' => str_replace(["R$ ", ".", ","], ["", "", "."], $data['siInvSPubl']),
+            'spubCY' => $saldoFinal,
+            'bbrfLY' => str_replace(["R$ ", ".", ","], ["", "", "."], $data['siInvBbRf']), 
+            'bbrfCY' => $saldoFinal
         ]);
     }
 
@@ -169,18 +162,17 @@ class Banco extends Model
      * @param array $data
      * @return bool
      */
-    private function update(array $data): bool
+    private function update(int $idProc, array $data): bool
     {             
-        $query = "UPDATE banco SET orgao = :orgao, numero = :numero, ano = :ano, digito = :digito, assunto = :assunto, detalhamento = :detalhamento, instituicao_id = :instituicao_id WHERE id = :id";
-        
-        $params = [
-            'orgao' => $data['docNome'],
-            //'numero' => $checkTcU,
-            //'ano' => $checkPddeU,
-            'id' => $data['idDoc']
-        ];
-        
-        $stmt = $this->pdo->prepare($query);
-        return $stmt->execute($params);
+        $stmt = $this->pdo->prepare("UPDATE banco SET cc_2025 = :cc, pp_01_2025 = :pp01, pp_51_2025 = :pp51, spubl_2025 = :spubl, bb_rf_cp_2025 = :bbrf WHERE id = :idConta AND proc_id = :idProc");
+        return $stmt->execute([
+            'cc' => str_replace(["R$ ", ".", ","], ["", "", "."], $data['corrente']),
+            'pp01' => str_replace(["R$ ", ".", ","], ["", "", "."], $data['poup01']),
+            'pp51' => str_replace(["R$ ", ".", ","], ["", "", "."], $data['poup51']),
+            'spubl' => str_replace(["R$ ", ".", ","], ["", "", "."], $data['invSPubl']),
+            'bbrf' => str_replace(["R$ ", ".", ","], ["", "", "."], $data['invBbRf']),
+            'idConta' => $data['idContaM'],
+            'idProc' => $idProc
+        ]);
     }
 }

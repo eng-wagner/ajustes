@@ -18,7 +18,7 @@ class Conciliacao extends Model
 
     public function getRelatorio(int $idProc): array
     {
-        $stmt = $this->pdo->prepare("SELECT occ_id, descricao, dataOcc, valorOcc FROM conciliacao WHERE proc_id = :idProc");
+        $stmt = $this->pdo->prepare("SELECT occ_id, descricao, dataOcc, valorOcc FROM conciliacao25 WHERE proc_id = :idProc");
         $stmt->execute(['idProc' => $idProc]);
         $ocorrencias = $stmt->fetchAll(PDO::FETCH_OBJ);
 

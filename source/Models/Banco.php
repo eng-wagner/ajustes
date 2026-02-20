@@ -115,7 +115,7 @@ class Banco extends Model
      * @param array $data (dados vindos do formulário, ex: $_POST)
      * @return bool
      */
-    public function saveBanco(int $idProc, ?int $idInst = null, array $data): bool
+    public function saveBanco(int $idProc, ?int $idInst = null, array $data = []): bool
     {
         // Se o ID existir nos dados, é uma atualização (UPDATE).
         if (!empty($data['idContaM'])) {

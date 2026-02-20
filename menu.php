@@ -73,13 +73,13 @@
             if ($perfil != "ofc") {
             ?>                
             <li class="sidebar-item">
-                <a href="?pddeAE=true" class="sidebar-link">
+                <a href="pddePC.php" class="sidebar-link">
                     <i class="lni lni-check-box"></i>
                     <span>Prestação de Contas PDDE</span>
                 </a>
             </li>
             <li class="sidebar-item">
-                <a href="?pddeAF=true" class="sidebar-link">
+                <a href="pddeFinanc.php" class="sidebar-link">
                     <i class="lni lni-investment"></i>
                     <span>Análise Financeira</span>
                 </a>

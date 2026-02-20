@@ -10,6 +10,15 @@ use DateTime;
  
 class Processo extends Model
 {   
+    const STATUS_AGUARDANDO_ENTREGA = 1;
+    const STATUS_RECEBIDO = 2;
+    const STATUS_ANALISE_EXECUCAO = 3;
+    const STATUS_PENDENCIA_AE= 4;
+    const STATUS_ANALISE_FINANCEIRA = 5;
+    const STATUS_AF_CONCLUIDO = 6;
+    const STATUS_CONCLUIDO = 7;
+    const STATUS_ERRO = 99;
+    
     /**
      * Busca todos os processos no banco de dados.
      * @return array

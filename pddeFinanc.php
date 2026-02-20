@@ -8,7 +8,6 @@ date_default_timezone_set("America/Sao_Paulo");
 $timezone = new DateTimeZone("America/Sao_Paulo");
 $hoje = date('d/m/Y');
 
-use Source\Database\Connect;
 use Source\Models\Despesa;
 use Source\Models\Instituicao;
 use Source\Models\Processo;
@@ -31,7 +30,11 @@ function limparMoedaSQL($valor) {
     return (float) str_replace(',', '.', $limpo); // Troca vírgula por ponto
 }
 
-$pdo = Connect::getInstance();
+function redirecionar(string $url, string $tipo, string $mensagem) {
+    $_SESSION[$tipo == 'sucesso' ? 'toast_sucesso' : 'toast_erro'] = $mensagem;
+    header("Location: $url");
+    exit();
+}
 
 // 1. Instancia Apenas o User inicialmente
 $userModel = new User();
@@ -92,7 +95,7 @@ if($processo){
     $tipoProcesso = $processo->assunto . ' - ' . $processo->tipo;       
 }
 
-$idStatus = empty($statusProcesso) ? 1 : $statusProcesso->status_id;
+$idStatus = empty($statusProcesso) ? Processo::STATUS_AGUARDANDO_ENTREGA : $statusProcesso->status_id;
 $statusPC = empty($statusProcesso) ? "Aguardando Entrega" : $statusProcesso->status_pc;
 
 if (isset($_REQUEST["logoff"]) && $_REQUEST["logoff"] == true) {
@@ -106,7 +109,6 @@ if (isset($_REQUEST["logoff"]) && $_REQUEST["logoff"] == true) {
 // Cada ação verifica um parâmetro específico (ex: 'novoSaldo', 'updateSaldo', 'createBanco', etc.) para saber qual ação executar.
 // ====================================================================
 
-// Se receber $_POST['novoSaldo'], executa a lógica para criar um novo saldo.
 if (isset($_REQUEST['novoSaldo']) && $_SERVER['REQUEST_METHOD'] == 'POST') 
 {   
     $postData = filter_input_array(INPUT_POST, FILTER_DEFAULT);
@@ -122,12 +124,10 @@ if (isset($_REQUEST['novoSaldo']) && $_SERVER['REQUEST_METHOD'] == 'POST')
             $log = $logModel->save([
                 'usuario' => $_SESSION['matricula'],
                 'acao' => "Inserção de Saldo Inicial - " . $idProc
-                ]);
-            $_SESSION['toast_sucesso'] = "Saldo criado com sucesso!";
-            header('Location:pddeFinanc.php');
-            exit();
-        } else {            
-            $_SESSION['toast_erro'] = "Erro ao gravar saldo!";
+                ]);                
+            redirecionar('pddeFinanc.php', 'sucesso', "Saldo criado com sucesso!");
+        } else {                        
+            redirecionar('pddeFinanc.php', 'erro', "Erro ao gravar saldo!");
         }
     }
 }
@@ -141,11 +141,9 @@ if (isset($_REQUEST['updateSaldo']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
             'usuario' => $_SESSION['matricula'],
             'acao' => "Atualização do Saldo do PDDE de Id " . $postData['idSaldoM']
         ]);
-        $_SESSION['toast_sucesso'] = "Saldo atualizado com sucesso!";
-        header('Location:pddeFinanc.php');
-        exit();
+        redirecionar('pddeFinanc.php', 'sucesso', "Saldo atualizado com sucesso!");        
     } else {
-        $_SESSION['toast_erro'] = "Erro ao atualizar saldo!";
+        redirecionar('pddeFinanc.php', 'erro', "Erro ao atualizar saldo!");
     }    
 }
 
@@ -157,12 +155,10 @@ if (isset($_REQUEST['createBanco']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $logModel->save([
             'usuario' => $_SESSION['matricula'],
             'acao' => "Criou nova conta no processo de Id " . $idProc
-        ]);
-        $_SESSION['toast_sucesso'] = "Conta criada com sucesso!";
-        header('Location:pddeFinanc.php');
-        exit();
+        ]);        
+        redirecionar('pddeFinanc.php', 'sucesso', "Conta criada com sucesso!");        
     } else {
-        $_SESSION['toast_erro'] = "Erro ao criar conta!";
+        redirecionar('pddeFinanc.php', 'erro', "Erro ao criar conta!");
     }            
 }                   
 
@@ -174,12 +170,10 @@ if (isset($_REQUEST['updateBanco']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $logModel->save([
             'usuario' => $_SESSION['matricula'],
             'acao' => "Atualização do Saldo Bancário da Conta de id " . $postData['idContaM']
-        ]);
-        $_SESSION['toast_sucesso'] = "Conta atualizada com sucesso!";
-        header('Location:pddeFinanc.php');
-        exit();
+        ]);        
+        redirecionar('pddeFinanc.php', 'sucesso', "Conta atualizada com sucesso!");        
     } else {
-        $_SESSION['toast_erro'] = "Erro ao atualizar saldo bancário!";            
+        redirecionar('pddeFinanc.php', 'erro', "Erro ao atualizar saldo bancário!");            
     }                   
 }
 
@@ -192,11 +186,9 @@ if (isset($_REQUEST['includeRent']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
             'usuario' => $_SESSION['matricula'],
             'acao' => "Inclusão de Rentabilidade no Processo de Id " . $_SESSION['idProc']
         ]);
-        $_SESSION['toast_sucesso'] = "Rentabilidade criada com sucesso!";
-        header('Location:pddeFinanc.php');
-        exit();
+        redirecionar('pddeFinanc.php', 'sucesso', "Rentabilidade criada com sucesso!");
     } else {
-        $_SESSION['toast_erro'] = "Erro ao criar rentabilidade!";        
+        redirecionar('pddeFinanc.php', 'erro', "Erro ao criar rentabilidade!");        
     }    
 }
 
@@ -209,13 +201,10 @@ if (isset($_REQUEST['updateRent']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
             'usuario' => $_SESSION['matricula'],
             'acao' => "Atualização da Rentabilidade id " . $postData['idRentM']
         ]);
-        $_SESSION['toast_sucesso'] = "Rentabilidade atualizada com sucesso!";
-        header('Location:pddeFinanc.php');
-        exit();
+        redirecionar('pddeFinanc.php', 'sucesso', "Rentabilidade atualizada com sucesso!");
     } else {
-        $_SESSION['toast_erro'] = "Erro ao atualizar rentabilidade!";
-        echo '<script>alert("ERRO!!!!")</script>';
-    }    
+        redirecionar('pddeFinanc.php', 'erro', "Erro ao atualizar rentabilidade!");
+    }
 }
 
 // Se receber $_POST['update'], executa a lógica para criar ou atualizar uma despesa.
@@ -228,10 +217,9 @@ if (isset($_REQUEST['update']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
             'usuario' => $_SESSION['matricula'],
             'acao' => "Atualizou a despesa no processo de id " . $idProc
         ]);
-        $_SESSION['toast_sucesso'] = "Despesa atualizada com sucesso!";
-        header('Location:pddeFinanc.php');
+        redirecionar('pddeFinanc.php', 'sucesso', "Despesa atualizada com sucesso!");
     } else {
-        $_SESSION['toast_erro'] = "Erro ao atualizar despesa!";        
+        redirecionar('pddeFinanc.php', 'erro', "Erro ao atualizar despesa!");        
     }
 }
  
@@ -245,10 +233,9 @@ if (isset($_REQUEST['glosa']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
             'usuario' => $_SESSION['matricula'],
             'acao' => "Glosou a despesa no processo de id " . $idDespesa
         ]);
-        $_SESSION['toast_sucesso'] = "Despesa glosada com sucesso!";
-        header('Location:pddeFinanc.php');
+        redirecionar('pddeFinanc.php', 'sucesso', "Despesa glosada com sucesso!");
     } else {
-        $_SESSION['toast_erro'] = "Erro ao glosar despesa!";        
+        redirecionar('pddeFinanc.php', 'erro', "Erro ao glosar despesa!");        
     }
 }
 
@@ -261,11 +248,9 @@ if (isset($_REQUEST['novaOcorrencia']) && $_SERVER['REQUEST_METHOD'] === 'POST')
             'usuario' => $_SESSION['matricula'],
             'acao' => "Adicionou nova ocorrência no processo de id " . $idProc
         ]);
-        $_SESSION['toast_sucesso'] = "Ocorrência salva com sucesso!";
-        header('Location:pddeFinanc.php');
-        exit();
+        redirecionar('pddeFinanc.php', 'sucesso', "Ocorrência salva com sucesso!");
     } else {
-        $_SESSION['toast_erro'] = "Erro ao salvar ocorrência!";        
+        redirecionar('pddeFinanc.php', 'erro', "Erro ao salvar ocorrência!");        
     }            
 }
 
@@ -277,12 +262,9 @@ if (isset($_GET['delOcc']) && $_GET['delOcc'] == true) {
             'usuario' => $_SESSION['matricula'],
             'acao' => "Deletou a ocorrência de id " . $_GET['idOcc'] . " no processo de id " . $idProc
         ]);
-        $_SESSION['toast_sucesso'] = "Ocorrência deletada com sucesso!";
-        header('Location:pddeFinanc.php');
-        exit();
+        redirecionar('pddeFinanc.php', 'sucesso', "Ocorrência deletada com sucesso!");
     } else {
-        $_SESSION['toast_erro'] = "Erro ao deletar ocorrência!";
-        echo '<script>alert("ERRO!!!!")</script>';
+        redirecionar('pddeFinanc.php', 'erro', "Erro ao deletar ocorrência!");
     }              
 }
 // ====================================================================
@@ -295,10 +277,8 @@ if (isset($_GET['delOcc']) && $_GET['delOcc'] == true) {
 if (isset($_REQUEST['concluirAf']) && $_REQUEST['concluirAf'] == 'true') {                        
     
     // Validação 1: O status do processo permite análise financeira?
-    if ($idStatus < 5) {
-        $_SESSION['toast_erro'] = "ERRO! O status do processo não está para análise financeira.";
-        header('Location: pddeFinanc.php');
-        exit();
+    if ($idStatus < Processo::STATUS_ANALISE_FINANCEIRA) { 
+        redirecionar('pddeFinanc.php', 'erro', "ERRO! O status do processo não está para análise financeira.");        
     }
 
     // ==================================================================================
@@ -321,9 +301,7 @@ if (isset($_REQUEST['concluirAf']) && $_REQUEST['concluirAf'] == 'true') {
         $totalGlosas = $despesaModel->getResumoDespesas($idProc)['glosas'];
         $saldoFinalResumo = $totalReceitas - $totalDespesas + $totalGlosas;
     } else {
-        $_SESSION['toast_erro'] = "ERRO CRÍTICO: Nenhum registro de saldo inicial encontrado para este processo!";
-        header('Location: pddeFinanc.php');
-        exit();
+        redirecionar('pddeFinanc.php', 'erro', "ERRO CRÍTICO: Nenhum registro de saldo inicial encontrado para este processo!");        
     }
     
     // Prepara as variáveis para a Validação 2
@@ -334,9 +312,7 @@ if (isset($_REQUEST['concluirAf']) && $_REQUEST['concluirAf'] == 'true') {
     
     // Validação 2: Compara com o saldo final do resumo geral
     if (round($saldoFinalResumo, 2) != round(($bancoFinal + $sdConc), 2)) {
-        $_SESSION['toast_erro'] = "ERRO! Verifique o saldo bancário final e/ou Conciliação Bancária. Diferença: R$ " . round($saldoFinalResumo, 2) - round(($bancoFinal + $sdConc), 2);
-        header('Location: pddeFinanc.php');
-        exit();
+        redirecionar('pddeFinanc.php', 'erro', "ERRO! Verifique o saldo bancário final e/ou Conciliação Bancária. Diferença: R$ " . (round($saldoFinalResumo, 2) - round(($bancoFinal + $sdConc), 2)));
     } 
     
     // Prepara as variáveis para a Validação 3
@@ -346,9 +322,7 @@ if (isset($_REQUEST['concluirAf']) && $_REQUEST['concluirAf'] == 'true') {
     
     // Validação 3: Validação da Rentabilidade                                                
     if (round($rentResumo, 2) != round($totalRentabilidade, 2)) {
-        $_SESSION['toast_erro'] = "ERRO! Valores de rentabilidade inconsistentes! Diferença: R$ " . round($rentResumo, 2) - round($totalRentabilidade, 2);
-        header('Location: pddeFinanc.php');
-        exit();
+        redirecionar('pddeFinanc.php', 'erro', "ERRO! Valores de rentabilidade inconsistentes! Diferença: R$ " . (round($rentResumo, 2) - round($totalRentabilidade, 2)));
     }  
     
     // ==========================================================
@@ -392,7 +366,7 @@ if (isset($_REQUEST['concluirAf']) && $_REQUEST['concluirAf'] == 'true') {
     // EXECUTA A GRAVAÇÃO NO BANCO DE DADOS
     // ==========================================================
    
-    $idSts = 6;    
+    $idSts = Processo::STATUS_AF_CONCLUIDO;    
     $teveErroSalvar = false;
 
     // 1. Atualiza os saldos individuais
@@ -406,9 +380,7 @@ if (isset($_REQUEST['concluirAf']) && $_REQUEST['concluirAf'] == 'true') {
     }
 
     if ($teveErroSalvar) {
-        $_SESSION['toast_erro'] = "ERRO AO GRAVAR SALDO!";
-        header('Location: pddeFinanc.php');
-        exit();
+        redirecionar('pddeFinanc.php', 'erro', "ERRO AO GRAVAR SALDO!");
     }
 
     // 2. Atualiza o status da Análise PDDE para Concluído    
@@ -417,14 +389,9 @@ if (isset($_REQUEST['concluirAf']) && $_REQUEST['concluirAf'] == 'true') {
             'usuario' => $_SESSION['matricula'] ?? 'Sistema',
             'acao' => "Concluiu a Análise Financeira do processo ID " . $idProc
         ]);
-
-        $_SESSION['toast_sucesso'] = "Análise Financeira concluída com sucesso!";
-        header('Location: pddeFinanc.php');
-        exit();
-    } else {
-        $_SESSION['toast_erro'] = "ERRO AO GRAVAR DADOS DA ANÁLISE!";
-        header('Location: pddeFinanc.php');
-        exit();
+        redirecionar('pddeFinanc.php', 'sucesso', "Análise Financeira concluída com sucesso!");
+    } else {        
+        redirecionar('pddeFinanc.php', 'erro', "ERRO AO GRAVAR DADOS DA ANÁLISE!");
     }  
 }
 

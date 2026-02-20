@@ -6,6 +6,7 @@ require_once __DIR__ . "/source/autoload.php";
 
 date_default_timezone_set("America/Sao_Paulo");
 $timezone = new DateTimeZone("America/Sao_Paulo");
+$hoje = date('d/m/Y');
 
 use Source\Models\Contabilidade;
 use Source\Models\Logs;
@@ -19,25 +20,51 @@ use Source\Models\Documento;
 use Source\Models\Pendencia;
 use Source\Models\Programa;
 
-// A conexão com o banco já é feita dentro da classe.
+// ====================================================================
+// FUNÇÃO HELPER: Limpar formato de moeda (R$ 1.500,00 -> 1500.00)
+// ====================================================================
+function limparMoedaSQL($valor) {
+    if (empty($valor)) return 0.00;
+    $limpo = preg_replace('/[^0-9,-]/', '', $valor); // Remove R$ e pontos
+    return (float) str_replace(',', '.', $limpo); // Troca vírgula por ponto
+}
+
+function redirecionar(string $url, string $tipo, string $mensagem) {
+    $_SESSION[$tipo == 'sucesso' ? 'toast_sucesso' : 'toast_erro'] = $mensagem;
+    header("Location: $url");
+    exit();
+}
+
+// 1. Instancia Apenas o User inicialmente
 $userModel = new User();
 
-// Verifica se o usuário está logado
+// 2. Verifica Segurança IMEDIATAMENTE
 if (empty($_SESSION['user_id'])) {
     header("Location: index.php?status=sessao_invalida");
     exit();
 }
 
+// 3. Agora que temos o usuário logado, podemos buscar seus dados para usar na aplicação
 $loggedUser = $userModel->findById($_SESSION['user_id']);
 if ($loggedUser) {
     $userName = $loggedUser->nome;
+    $firstName = substr($userName, 0, strpos($userName, " "));
     $perfil = $loggedUser->perfil;
-} else {
-    // Se o usuário logado não for encontrado, redireciona para a página de login
+} else {    
     session_destroy();
     header("Location: index.php?status=sessao_invalida");
     exit();
 }
+
+if (!isset($_SESSION['idProc'])) {
+    header('Location:buscar.php');
+    exit();
+}
+
+
+// ====================================================================
+// 4. Carregamento dos outros Models (Agora é seguro)
+// ====================================================================
 
 $logModel = new Logs();
 $contModel = new Contabilidade();
@@ -50,25 +77,29 @@ $programaModel = new Programa();
 $pendenciaModel = new Pendencia();
 $documentoModel = new Documento();
 
-
 $currentUser = $_SESSION['user_id'];
-$currentProcess = (int) $_SESSION['idProc'];
-$statusProcesso = $processoModel->procStatus($currentProcess);
+$idProc = (int) $_SESSION['idProc'];
 
-if(empty($statusProcesso))
-{
-    $currentStatus = 1;
-    $statusPC = "Aguardando Entrega";
+// Dados do Processo
+$statusProcesso = $processoModel->procStatus($idProc);
+$despesas = $despesaModel->findByProcId($idProc);
+$numPendencias = $pendenciaModel->contarPendencias($idProc);
+
+$idStatus = empty($statusProcesso) ? Processo::STATUS_AGUARDANDO_ENTREGA : $statusProcesso->status_id;
+$statusPC = empty($statusProcesso) ? "Aguardando Entrega" : $statusProcesso->status_pc;
+
+if (isset($_REQUEST["logoff"]) && $_REQUEST["logoff"] == true) {
+    session_unset();
+    header("Location:index.php");
+    exit();
 }
-else
-{
-    $currentStatus = $statusProcesso->status_id;
-    $statusPC = $statusProcesso->status_pc;
-}
 
-$despesas = $despesaModel->findByProcId($currentProcess);
 
-$numPendencias = $pendenciaModel->contarPendencias($currentProcess);
+// Lê qual aba deve estar ativa. Se não houver nenhuma ordem, abre o 'resumo'.
+$abaAtiva = $_SESSION['aba_ativa'] ?? 'dadosGerais';
+
+// Limpa a sessão logo a seguir
+unset($_SESSION['aba_ativa']);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -94,11 +125,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
 <body>
     <?php
 
-    if (isset($_REQUEST["logoff"]) && $_REQUEST["logoff"] == true) {
-        $_SESSION['flag'] = false;
-        session_unset();
-        header("Location:index.php?status=logoff");
-    }
+    
     $firstName = substr($userName,0,strpos($userName," "));
 
     if(isset($_REQUEST['pddeAE']) && $_REQUEST['pddeAE'] == true){
@@ -122,11 +149,10 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
         header("Location:termoPC.php");
     }
 
-    if(isset($currentProcess) && $currentProcess > 0)
+    if(isset($idProc) && $idProc > 0)
     {   
-        $proc = $processoModel->findById($currentProcess);
-        if($proc){
-            $idProc = $proc->id;
+        $proc = $processoModel->findById($idProc);
+        if($proc){           
             $orgao = $proc->orgao;
             $numero = $proc->numero;
             $ano = $proc->ano;
@@ -193,17 +219,17 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
             <div class="container-fluid">        
                 <nav>
                     <div class="nav nav-tabs" id="nav-tab" role="tablist">
-                    <button class="nav-link <?php echo $_SESSION['nav'][0]; ?>" id="nav-dados-tab" data-bs-toggle="tab" data-bs-target="#nav-dados" type="button" role="tab" aria-controls="nav-dados" aria-selected="<?php echo $_SESSION['sel'][0]; ?>">Dados Gerais</button>
-                    <button class="nav-link <?php echo $_SESSION['nav'][1]; ?>" id="nav-dadosfin-tab" data-bs-toggle="tab" data-bs-target="#nav-dadosfin" type="button" role="tab" aria-controls="nav-dadosfin" aria-selected="<?php echo $_SESSION['sel'][1]; ?>">Dados Financeiros</button>
-                    <button class="nav-link <?php echo $_SESSION['nav'][2]; ?>" id="nav-quali-tab" data-bs-toggle="tab" data-bs-target="#nav-quali" type="button" role="tab" aria-controls="nav-quali" aria-selected="<?php echo $_SESSION['sel'][2]; ?>">Análise da Execução</button>
-                    <button class="nav-link <?php echo $_SESSION['nav'][3]; ?>" id="nav-finan-tab" data-bs-toggle="tab" data-bs-target="#nav-finan" type="button" role="tab" aria-controls="nav-finan" aria-selected="<?php echo $_SESSION['sel'][3]; ?>">Análise Financeira</button>
-                    <button class="nav-link <?php echo $_SESSION['nav'][4]; ?>" id="nav-pendencia-tab" data-bs-toggle="tab" data-bs-target="#nav-pendencia" type="button" role="tab" aria-controls="nav-pendencia" aria-selected="<?php echo $_SESSION['sel'][4]; ?>">Histórico de Pendências</button>              
+                    <button class="nav-link <?= $abaAtiva == 'dadosGerais' ? 'active' : '' ?>" id="nav-dados-tab" data-bs-toggle="tab" data-bs-target="#nav-dados" type="button" role="tab" aria-controls="nav-dados" aria-selected="<?= $abaAtiva == 'dadosGerais' ? 'true' : 'false' ?>">Dados Gerais</button>
+                    <button class="nav-link <?= $abaAtiva == 'dadosFinanceiros' ? 'active' : '' ?>" id="nav-dadosfin-tab" data-bs-toggle="tab" data-bs-target="#nav-dadosfin" type="button" role="tab" aria-controls="nav-dadosfin" aria-selected="<?= $abaAtiva == 'dadosFinanceiros' ? 'true' : 'false' ?>">Dados Financeiros</button>
+                    <button class="nav-link <?= $abaAtiva == 'analiseExecucao' ? 'active' : '' ?>" id="nav-quali-tab" data-bs-toggle="tab" data-bs-target="#nav-quali" type="button" role="tab" aria-controls="nav-quali" aria-selected="<?= $abaAtiva == 'analiseExecucao' ? 'true' : 'false' ?>">Análise da Execução</button>
+                    <button class="nav-link <?= $abaAtiva == 'analiseFinanceira' ? 'active' : '' ?>" id="nav-finan-tab" data-bs-toggle="tab" data-bs-target="#nav-finan" type="button" role="tab" aria-controls="nav-finan" aria-selected="<?= $abaAtiva == 'analiseFinanceira' ? 'true' : 'false' ?>">Análise Financeira</button>
+                    <button class="nav-link <?= $abaAtiva == 'historicoPendencias' ? 'active' : '' ?>" id="nav-pendencia-tab" data-bs-toggle="tab" data-bs-target="#nav-pendencia" type="button" role="tab" aria-controls="nav-pendencia" aria-selected="<?= $abaAtiva == 'historicoPendencias' ? 'true' : 'false' ?>">Histórico de Pendências</button>              
                     </div>
                 </nav>
                 <div class="tab-content" id="nav-tabContent">
 
                     <!-- DADOS GERAIS -->
-                    <div class="tab-pane fade <?php echo $_SESSION['navShow'][0]; ?>" id="nav-dados" role="tabpanel" aria-labelledby="nav-dados-tab" tabindex="0">
+                    <div class="tab-pane fade <?= $abaAtiva == 'dadosGerais' ? 'show active' : '' ?>" id="nav-dados" role="tabpanel" aria-labelledby="nav-dados-tab" tabindex="0">
                         <div class="container-fluid">
                             <br />
                             <div class="row">
@@ -260,7 +286,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                     </div>
 
                     <!-- DADOS FINANCEIROS -->
-                    <div class="tab-pane fade <?php echo $_SESSION['navShow'][1]; ?>" id="nav-dadosfin" role="tabpanel" aria-labelledby="nav-dadosfin-tab" tabindex="0">
+                    <div class="tab-pane fade <?= $abaAtiva == 'dadosFinanceiros' ? 'show active' : '' ?>" id="nav-dadosfin" role="tabpanel" aria-labelledby="nav-dadosfin-tab" tabindex="0">
                         <div class="container-fluid">                    
                             <br />
                             <div class="row">
@@ -283,7 +309,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                                             $somaPoupancaLY =  0;
                                             $somaFundosLY =  0;
 
-                                            $lys = $bancoModel->findLYById($currentProcess);                                            
+                                            $lys = $bancoModel->findLYById($idProc);                                            
                                             foreach($lys as $ly):                                            
                                                 $agencia = $ly->agencia;
                                                 $conta = $ly->conta;
@@ -346,7 +372,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                                             $spubl_CY = 0;
                                             $bb_rf_cp_CY = 0;
 
-                                            $cys = $bancoModel->findCYById($currentProcess);
+                                            $cys = $bancoModel->findCYById($idProc);
                                             foreach($cys as $cy):                                            
                                                 $agencia = $cy->agencia;
                                                 $conta = $cy->conta;
@@ -408,7 +434,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                                             $somaCapital =  0;
                                             $somaRepasse =  0;
 
-                                            $repasses = $repasseModel->findById($currentProcess);                                            
+                                            $repasses = $repasseModel->findById($idProc);                                            
                                             if($repasses)
                                             {
                                                 foreach($repasses as $repasse):
@@ -462,7 +488,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                             }
                             elseif($_SESSION['perfil'] == 'ofc') 
                             {
-                                $acao = "Tentou receber o processo de id " . $currentProcess;
+                                $acao = "Tentou receber o processo de id " . $idProc;
                                 $log = $logModel->save([
                                     'usuario' => $_SESSION['matricula'],
                                     'acao' => $acao
@@ -471,10 +497,10 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                             }
                             else
                             {                                    
-                                $receber = $processoModel->receberProcesso($currentProcess);
+                                $receber = $processoModel->receberProcesso($idProc);
                                 if($receber)
                                 {
-                                    $acao = "Recebeu o processo de id " . $currentProcess;
+                                    $acao = "Recebeu o processo de id " . $idProc;
                                      $log = $logModel->save([
                                     'usuario' => $_SESSION['matricula'],
                                     'acao' => $acao
@@ -497,7 +523,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                         $savedFlag = "";
                         $pendente = "";
 
-                        $proc = $processoModel->abrirTramitacao($currentProcess);                        
+                        $proc = $processoModel->abrirTramitacao($idProc);                        
                                                
                         if($proc)
                         {
@@ -540,7 +566,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                         }                        
                     ?>
                     
-                    <div class="tab-pane fade <?php echo $_SESSION['navShow'][2]; ?>" id="nav-quali" role="tabpanel" aria-labelledby="nav-quali-tab" tabindex="0">                
+                    <div class="tab-pane fade <?= $abaAtiva == 'analiseExecucao' ? 'show active' : '' ?>" id="nav-quali" role="tabpanel" aria-labelledby="nav-quali-tab" tabindex="0">                
                         <form method="POST" action="?saveExec=true">
                             <div class="container-fluid">
                                 <br />
@@ -565,7 +591,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                                         </div>
                                         <div class="mb-2">
                                             <?php
-                                            if($currentStatus == 1){
+                                            if($idStatus == Processo::STATUS_AGUARDANDO_ENTREGA){
                                                 echo '<button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#entregaModal">Registrar Entrega</button>';
                                             } else {
                                                 echo '<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#despesaModal">Incluir Nova Despesa</button>';
@@ -712,12 +738,12 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                                     </div>                            
                                     <div class="col text-end">                            
                                         <?php
-                                        if($currentStatus == 2) {
+                                        if($idStatus == Processo::STATUS_RECEBIDO) {
                                             ?>
                                             <input type="submit" class="btn btn-success" value="Gravar Status" />
                                             <?php
                                         }
-                                        else if ($currentStatus > 2 && $savedFlag == 1)
+                                        else if ($idStatus > 2 && $savedFlag == 1)
                                         {
                                             ?>
                                             
@@ -747,7 +773,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                                     $pendente = 0;
                                 }
                                 
-                                $proc = $processoModel->abrirTramitacao($currentProcess);                                
+                                $proc = $processoModel->abrirTramitacao($idProc);                                
                                 if($proc)
                                 {
                                     $idUserEx = $proc->usuario_ex_id;
@@ -765,7 +791,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                                     //$analExDate = $dtAgora;
                                 }                                
                                 
-                                $saveExec = $processoModel->saveExecucao($postData, $idSts, $idUserEx, $pendente, $currentProcess);
+                                $saveExec = $processoModel->saveExecucao($postData, $idSts, $idUserEx, $pendente, $idProc);
                                 
                                 $_SESSION['nav'] = array("","","active","","");
                                 $_SESSION['navShow'] = array("","","show active","","");
@@ -792,7 +818,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                                 }                                
                                 else if($despesasPendentes == 0)
                                 {
-                                    $proc = $processoModel->abrirTramitacao($currentProcess);                                    
+                                    $proc = $processoModel->abrirTramitacao($idProc);                                    
                                     if($proc)
                                     {
                                         $pcStatus = $proc->status_id;                                        
@@ -804,7 +830,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                                     }                                    
                                     else
                                     {
-                                        $encFin = $processoModel->encaminharFin($currentProcess);
+                                        $encFin = $processoModel->encaminharFin($idProc);
                                         
                                         if($encFin)
                                         {
@@ -837,9 +863,9 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
 
                             if(isset($_REQUEST['forceFin']) && $_REQUEST['forceFin'] == true)
                             {
-                                if($currentStatus == 4)
+                                if($idStatus == Processo::STATUS_PENDENCIA_AE)
                                 {
-                                   $encFin = $processoModel->encaminharFin($currentProcess);                                        
+                                   $encFin = $processoModel->encaminharFin($idProc);                                        
                                     if($encFin)
                                     {
                                         header('Location:pddePC.php?status=success');
@@ -852,7 +878,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                             }
 
                             if(isset($_GET['delDesp']) && $_GET['delDesp'] == true){
-                                if($currentStatus >=5)
+                                if($idStatus >= Processo::STATUS_ANALISE_FINANCEIRA)
                                 {
                                     $_SESSION['nav'] = array("","","active","","");
                                     $_SESSION['navShow'] = array("","","show active","","");
@@ -891,9 +917,9 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                         {
                             $postData = filter_input_array(INPUT_POST, FILTER_DEFAULT);
                             
-                            if($novaDespesa = $despesaModel->save($postData, $currentProcess, $currentUser))
+                            if($novaDespesa = $despesaModel->save($postData, $idProc, $currentUser))
                             {
-                                $acao = "Inseriu nova despesa no processo de id " . $currentProcess;
+                                $acao = "Inseriu nova despesa no processo de id " . $idProc;
                                 $log = $logModel->save([
                                     'usuario' => $_SESSION['matricula'],
                                     'acao' => $acao
@@ -917,7 +943,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                         {
                             $postData = filter_input_array(INPUT_POST, FILTER_DEFAULT);
                         
-                            if($atualizarDespesa = $despesaModel->save($postData, $currentProcess, $currentUser))
+                            if($atualizarDespesa = $despesaModel->save($postData, $idProc, $currentUser))
                             {
                                 $acao = "Atualizou a despesa no processo de id " . $postData['idDespM'];
                                 $log = $logModel->save([
@@ -1120,7 +1146,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                     </div>
 
                     <!-- ANÁLISE FINANCEIRA -->
-                    <div class="tab-pane fade <?php echo $_SESSION['navShow'][3]; ?>" id="nav-finan" role="tabpanel" aria-labelledby="nav-finan-tab" tabindex="0">
+                    <div class="tab-pane fade <?= $abaAtiva == 'analiseFinanceira' ? 'show active' : '' ?>" id="nav-finan" role="tabpanel" aria-labelledby="nav-finan-tab" tabindex="0">
                         <div class="container-fluid">                    
                             <br />
                             <form action="?saveFin=true" method="post">
@@ -1130,7 +1156,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                                         <br />
                                         <?php
                                         
-                                        $proc = $processoModel->abrirTramitacao($currentProcess);
+                                        $proc = $processoModel->abrirTramitacao($idProc);
                                         
                                         if(!empty($proc))
                                         {
@@ -1213,7 +1239,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                     <?php
                     if(isset($_REQUEST['saveFin']) && $_REQUEST['saveFin'] == true)
                     {                        
-                        if($currentStatus < 5)
+                        if($idStatus < Processo::STATUS_ANALISE_FINANCEIRA)
                         {                            
                             echo "<script>alert('ERRO! O status do processo não está disponível para Análise Financeira!');</script>";
                         }
@@ -1227,9 +1253,9 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                             {
                                 $postData = filter_input_array(INPUT_POST, FILTER_DEFAULT);
                             
-                                if($atualizaFin = $processoModel->atualizarFinan($postData, $currentProcess))
+                                if($atualizaFin = $processoModel->atualizarFinan($postData, $idProc))
                                 {
-                                    $acao = "Atualizou o status da análise financeira do processo de " . $currentProcess;
+                                    $acao = "Atualizou o status da análise financeira do processo de " . $idProc;
                                     $log = $logModel->save([
                                         'usuario' => $_SESSION['matricula'],
                                         'acao' => $acao
@@ -1250,17 +1276,17 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
 
                     if(isset($_REQUEST['registrarSIGPC']) && $_REQUEST['registrarSIGPC'] == true)
                     {                        
-                        if($currentStatus < 6)
+                        if($idStatus < Processo::STATUS_AF_CONCLUIDO)
                         {
                             echo "<script>alert('A Análise Financeira da Prestação de Contas ainda não foi concluída');</script>";
                         }
-                        else if($currentStatus == 7)
+                        else if($idStatus == Processo::STATUS_CONCLUIDO)
                         {
                             echo "<script>alert('A Prestação de Contas já foi concluída');</script>";
                         }
                         else
                         {                               
-                            $reg = $processoModel->registrarSIGPC($currentProcess);
+                            $reg = $processoModel->registrarSIGPC($idProc);
                             if($reg)
                             {
                                 $_SESSION['nav'] = array("","","","active","");
@@ -1273,12 +1299,12 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
 
                     ?>
                     <!-- PENDÊNCIAS -->
-                    <div class="tab-pane fade <?php echo $_SESSION['navShow'][4]; ?>" id="nav-pendencia" role="tabpanel" aria-labelledby="nav-pendencia-tab" tabindex="0">
+                    <div class="tab-pane fade <?= $abaAtiva == 'pendencias' ? 'show active' : '' ?>" id="nav-pendencia" role="tabpanel" aria-labelledby="nav-pendencia-tab" tabindex="0">
                         <div class="container-fluid">
                             <br />
                             <div class="row my-auto">                        
                                 <button type="button" class="col-2 btn btn-primary mx-2" data-bs-toggle="modal" data-bs-target="#pendenciaModal">+ Nova Pendência</button>                        
-                                <a href="emailPendencias.php?idProc=<?= $currentProcess ?>" target="_blank" class="col-2 mx-2"><button type="button" class="col-12 btn btn-success">Escrever E-mail</button></a>                        
+                                <a href="emailPendencias.php?idProc=<?= $idProc ?>" target="_blank" class="col-2 mx-2"><button type="button" class="col-12 btn btn-success">Escrever E-mail</button></a>                        
                                 <div class="col-6 text-center mx-2 fw-semibold">Histórico de Pendências</div>                                        
                             </div>
                             <hr />
@@ -1303,7 +1329,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                                         </thead>
                                         <tbody>
                                             <?php
-                                            $pends = $pendenciaModel->findByProcId($currentProcess);
+                                            $pends = $pendenciaModel->findByProcId($idProc);
                                             if($pends)
                                             {
                                                 foreach($pends as $pend):                                                
@@ -1441,9 +1467,9 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                         {
                             $postData = filter_input_array(INPUT_POST, FILTER_DEFAULT);
                         
-                            if($savePend = $pendenciaModel->save($postData, $currentProcess, $currentUser))
+                            if($savePend = $pendenciaModel->save($postData, $idProc, $currentUser))
                             {
-                                $acao = "Inseriu nova pendência no processo de id " . $currentProcess;
+                                $acao = "Inseriu nova pendência no processo de id " . $idProc;
                                 $log = $logModel->save([
                                     'usuario' => $_SESSION['matricula'],
                                     'acao' => $acao
@@ -1471,7 +1497,7 @@ $numPendencias = $pendenciaModel->contarPendencias($currentProcess);
                         {
                             $postData = filter_input_array(INPUT_POST, FILTER_DEFAULT);
                         
-                            if($savePend = $pendenciaModel->save($postData, $currentProcess, $currentUser))
+                            if($savePend = $pendenciaModel->save($postData, $idProc, $currentUser))
                             {
                                 $acao = "Atualizou a pendência de " . $postData['idPendM'];
                                 $log = $logModel->save([

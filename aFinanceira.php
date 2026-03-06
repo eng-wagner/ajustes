@@ -174,8 +174,9 @@ $dadosConciliacao = $conciliacaoModel->getRelatorio($idProc);
             <thead>
                 <?php                
                 $contCol = $saldoModel->contColumsAF($idProc);
-                $colTitulo = 5 + $contCol;
-                $colFoot = 4 + $contCol;
+                $colTitulo = 4 + $contCol;
+                $colFoot = 3 + $contCol;
+                //echo $contCol . " - " . $colTitulo . " - " . $colFoot;
                 ?>
                 <tr class="text-center align-middle"><th colspan="<?= $colTitulo ?>">ANÁLISE FINANCEIRA</th></tr>
                 <tr class="text-center align-middle">

@@ -61,7 +61,6 @@ if (!isset($_SESSION['idProc'])) {
     exit();
 }
 
-
 // ====================================================================
 // 4. Carregamento dos outros Models (Agora é seguro)
 // ====================================================================
@@ -81,9 +80,27 @@ $currentUser = $_SESSION['user_id'];
 $idProc = (int) $_SESSION['idProc'];
 
 // Dados do Processo
+$processo = $processoModel->findById($idProc);
 $statusProcesso = $processoModel->procStatus($idProc);
 $despesas = $despesaModel->findByProcId($idProc);
 $numPendencias = $pendenciaModel->contarPendencias($idProc);
+
+if($processo){
+    $instituicao = $instituicaoModel->findById($processo->instituicao_id);
+    $numProcesso = $processoModel->formatarProcesso($processo);
+    $tipoProcesso = $processo->assunto . ' - ' . $processo->tipo;
+    $idInst = $instituicaoModel->findById($processo->instituicao_id);
+    $cnpj = $instituicaoModel->formatarCnpj($instituicao);    
+    $iNome = $instituicao->instituicao;
+    $iEmail = $instituicao->email;
+    $iEndereco = $instituicao->endereco;
+    $inep = $instituicao->inep;
+    $iTelefone = $instituicao->telefone;
+    $contabilidade = $contModel->findById($instituicao->cont_id);    
+    $cNome = $contabilidade->c_nome;
+    $cTelefone = $contabilidade->c_telefone;
+    $cEmail = $contabilidade->c_email;
+}
 
 $idStatus = empty($statusProcesso) ? Processo::STATUS_AGUARDANDO_ENTREGA : $statusProcesso->status_id;
 $statusPC = empty($statusProcesso) ? "Aguardando Entrega" : $statusProcesso->status_pc;
@@ -123,65 +140,6 @@ unset($_SESSION['aba_ativa']);
 </head>
 
 <body>
-    <?php
-
-    
-    $firstName = substr($userName,0,strpos($userName," "));
-
-    if(isset($_REQUEST['pddeAE']) && $_REQUEST['pddeAE'] == true){
-        $_SESSION['nav'] = array("active","","","","");
-        $_SESSION['navShow'] = array("show active","","","","");
-        $_SESSION['sel'] = array("true","false","false","false","false");
-        header("Location:pddePC.php");
-    }
-
-    if(isset($_REQUEST['pddeAF']) && $_REQUEST['pddeAF'] == true){
-        $_SESSION['navF'] = array("active","","","","","");
-        $_SESSION['navShowF'] = array("show active","","","","","");
-        $_SESSION['selF'] = array("true","false","false","false","false","false");
-        header("Location:pddeFinanc.php");
-    }
-
-    if(isset($_REQUEST['analiseTC']) && $_REQUEST['analiseTC'] == true){
-        $_SESSION['nav'] = array("active","","","","");
-        $_SESSION['navShow'] = array("show active","","","","");
-        $_SESSION['sel'] = array("true","false","false","false","false");
-        header("Location:termoPC.php");
-    }
-
-    if(isset($idProc) && $idProc > 0)
-    {   
-        $proc = $processoModel->findById($idProc);
-        if($proc){           
-            $orgao = $proc->orgao;
-            $numero = $proc->numero;
-            $ano = $proc->ano;
-            $digito = $proc->digito;
-            $assunto = $proc->assunto;                       
-            $tipo = $proc->tipo;
-            $idInst = $proc->instituicao_id;
-
-            $inst = $instituicaoModel->findById($idInst);
-            if($inst)
-            {
-                $instituicao = $inst->instituicao;
-                $cnpj = $inst->cnpj;
-                $iEmail = $inst->email;
-                $iEndereco = $inst->endereco;
-                $inep = $inst->inep;
-                $iTelefone = $inst->telefone;
-                $iCont = $inst->cont_id;
-            }
-        }
-    }    
-    else {
-        header('Location:buscar.php');
-    }
-    
-    $cnpj = substr($cnpj,0,2) . "." . substr($cnpj,2,3) . "." . substr($cnpj,5,3) . "/" . substr($cnpj,8,4) . "-" . substr($cnpj,12,2);
-        
-    ?>
-
     <div class="wrapper">
         <?php include 'menu.php'; ?>
         <div class="main p-3">
@@ -196,21 +154,21 @@ unset($_SESSION['aba_ativa']);
                     <div class="col-6">
                         <div class="input-group input-group-sm mb-2">
                             <span class="input-group-text col-3" id="inputGroup-nomeEnt">Entidade</span>
-                            <input type="text" name="nomeEnt" value="<?php echo $instituicao; ?>" class="col-9 form-control" aria-describedby="inputGroup-nomeEnt" readonly/>
+                            <input type="text" name="nomeEnt" value="<?= $iNome ?>" class="col-9 form-control" aria-describedby="inputGroup-nomeEnt" readonly/>
                         </div>        
                         <div class="input-group input-group-sm mb-2">
                             <span class="input-group-text col-3" id="inputGroup-processo">Processo</span>
-                            <input type="text" name="campo3" value="<?php echo $orgao . '.' . $numero . '/' . $ano . '-' . $digito; ?>" class="col-9 form-control" aria-describedby="inputGroup-processo" readonly/>
+                            <input type="text" name="campo3" value="<?= $numProcesso ?>" class="col-9 form-control" aria-describedby="inputGroup-processo" readonly/>
                         </div>
                     </div>    
                     <div class="col-6">
                         <div class="input-group input-group-sm mb-2">
                             <span class="input-group-text col-3" id="inputGroup-assuntoProc">Assunto</span>
-                            <input type="text" name="assuntoProc" value="<?php echo $assunto . ' - ' . $tipo; ?>" class="col-9 form-control" aria-describedby="inputGroup-assuntoProc" readonly/>
+                            <input type="text" name="assuntoProc" value="<?= $tipoProcesso ?>" class="col-9 form-control" aria-describedby="inputGroup-assuntoProc" readonly/>
                         </div>
                         <div class="input-group input-group-sm mb-2">
                             <span class="input-group-text col-3" id="inputGroup-statusProc">Status</span>
-                            <input type="text" name="statusProc" value="<?php echo $statusPC; ?>" class="col-9 form-control" aria-describedby="inputGroup-statusProc" readonly/>
+                            <input type="text" name="statusProc" value="<?= $statusPC ?>" class="col-9 form-control" aria-describedby="inputGroup-statusProc" readonly/>
                         </div>                          
                     </div>
                 </div>
@@ -237,49 +195,39 @@ unset($_SESSION['aba_ativa']);
                                     <h6>Entidade</h6>
                                     <div class="input-group input-group-sm mb-2">
                                         <span class="input-group-text col-3" id="inputGroup-inep">INEP</span>
-                                        <input type="text" name="inep" value="<?php echo $inep; ?>" class="col-9 form-control" aria-describedby="inputGroup-inep" readonly/>
+                                        <input type="text" name="inep" value="<?= $inep ?>" class="col-9 form-control" aria-describedby="inputGroup-inep" readonly/>
                                     </div>
                                     <div class="input-group input-group-sm mb-2">
                                         <span class="input-group-text col-3" id="inputGroup-cnpj">CNPJ</span>
-                                        <input type="text" name="cnpj" value="<?php echo $cnpj; ?>" class="col-9 form-control" aria-describedby="inputGroup-cnpj" readonly/>
+                                        <input type="text" name="cnpj" value="<?= $cnpj ?>" class="col-9 form-control" aria-describedby="inputGroup-cnpj" readonly/>
                                     </div>
                                     <div class="input-group input-group-sm mb-2">
                                         <span class="input-group-text col-3" id="inputGroup-email">E-mail</span>
-                                        <input type="text" name="email" value="<?php echo $iEmail; ?>" class="col-9 form-control" aria-describedby="inputGroup-email" readonly/>
+                                        <input type="text" name="email" value="<?= $iEmail ?>" class="col-9 form-control" aria-describedby="inputGroup-email" readonly/>
                                     </div>
                                     <div class="input-group input-group-sm mb-2">
                                         <span class="input-group-text col-3" id="inputGroup-end">Endereço</span>
-                                        <input type="text" name="campo2" value="<?php echo $iEndereco; ?>" value="Rua Tiradentes, 3180 - Montanhão" class="col-9 form-control" aria-describedby="inputGroup-end" readonly/>
+                                        <input type="text" name="campo2" value="<?= $iEndereco ?>" value="Rua Tiradentes, 3180 - Montanhão" class="col-9 form-control" aria-describedby="inputGroup-end" readonly/>
                                     </div>
                                     <div class="input-group input-group-sm mb-2">
                                         <span class="input-group-text col-3" id="inputGroup-telefone">Telefone</span>
-                                        <input type="text" name="telefone" value="<?php echo $iTelefone; ?>" class="col-9 form-control" aria-describedby="inputGroup-telefone" readonly/>
+                                        <input type="text" name="telefone" value="<?= $iTelefone ?>" class="col-9 form-control" aria-describedby="inputGroup-telefone" readonly/>
                                     </div>
                                 </div>
-                                <div class="col">
-                                    <?php
-                                    $cont = $contModel->findById($iCont);
-                                    if($cont)
-                                    {
-                                        $cNome = $cont->c_nome;
-                                        $cTelefone = $cont->c_telefone;
-                                        $cEmail = $cont->c_email;
-                                        ?>
-                                        <h6>Contabilidade</h6>
-                                        <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-3" id="inputGroup-nomeC">Nome</span>
-                                            <input type="text" name="nomeC" value="<?php echo $cNome; ?>" class="col-9 form-control" aria-describedby="inputGroup-nomeC" readonly/>
-                                        </div>
-                                        <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-3" id="inputGroup-telefoneC">Telefone</span>
-                                            <input type="text" name="telefoneC" value="<?php echo $cTelefone; ?>" class="col-9 form-control" aria-describedby="inputGroup-telefoneC" readonly/>
-                                        </div>
-                                        <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-3" id="inputGroup-emailC">E-mail</span>
-                                            <input type="text" name="emailC" value="<?php echo $cEmail; ?>" class="col-9 form-control" aria-describedby="inputGroup-emailC" readonly/>
-                                        </div>
-                                        <?php
-                                    }?>
+                                <div class="col">                                    
+                                    <h6>Contabilidade</h6>
+                                    <div class="input-group input-group-sm mb-2">
+                                        <span class="input-group-text col-3" id="inputGroup-nomeC">Nome</span>
+                                        <input type="text" name="nomeC" value="<?= $cNome ?>" class="col-9 form-control" aria-describedby="inputGroup-nomeC" readonly/>
+                                    </div>
+                                    <div class="input-group input-group-sm mb-2">
+                                        <span class="input-group-text col-3" id="inputGroup-telefoneC">Telefone</span>
+                                        <input type="text" name="telefoneC" value="<?= $cTelefone ?>" class="col-9 form-control" aria-describedby="inputGroup-telefoneC" readonly/>
+                                    </div>
+                                    <div class="input-group input-group-sm mb-2">
+                                        <span class="input-group-text col-3" id="inputGroup-emailC">E-mail</span>
+                                        <input type="text" name="emailC" value="<?= $cEmail ?>" class="col-9 form-control" aria-describedby="inputGroup-emailC" readonly/>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -309,8 +257,8 @@ unset($_SESSION['aba_ativa']);
                                             $somaPoupancaLY =  0;
                                             $somaFundosLY =  0;
 
-                                            $lys = $bancoModel->findLYById($idProc);                                            
-                                            foreach($lys as $ly):                                            
+                                            $contas = $bancoModel->findByProcId($idProc);                                            
+                                            foreach($contas as $ly):                                            
                                                 $agencia = $ly->agencia;
                                                 $conta = $ly->conta;
                                                 $sCorrenteLY = $ly->cc_LY;
@@ -330,9 +278,9 @@ unset($_SESSION['aba_ativa']);
                                                 echo '<td>R$ ' . number_format($sFundosLY ?? 0, '2', ',', '.'). '</td>';
                                                 echo '</tr>';
 
-                                                $somaCorrenteLY =  $somaCorrenteLY + $sCorrenteLY;
-                                                $somaPoupancaLY =  $somaPoupancaLY + $sPoupancaLY;
-                                                $somaFundosLY =  $somaFundosLY + $sFundosLY;
+                                                $somaCorrenteLY += $sCorrenteLY;
+                                                $somaPoupancaLY += $sPoupancaLY;
+                                                $somaFundosLY += $sFundosLY;
                                             endforeach;
 
                                             ?>                                    
@@ -371,8 +319,7 @@ unset($_SESSION['aba_ativa']);
                                             $pp_51_CY = 0;
                                             $spubl_CY = 0;
                                             $bb_rf_cp_CY = 0;
-
-                                            $cys = $bancoModel->findCYById($idProc);
+                                            
                                             foreach($cys as $cy):                                            
                                                 $agencia = $cy->agencia;
                                                 $conta = $cy->conta;
@@ -397,9 +344,9 @@ unset($_SESSION['aba_ativa']);
                                                 echo '<td>R$ ' . number_format($sFundosCY, '2', ',', '.') . '</td>';
                                                 echo '</tr>';
 
-                                                $somaCorrenteCY = $somaCorrenteCY + $sCorrenteCY;
-                                                $somaPoupancaCY = $somaPoupancaCY + $sPoupancaCY;
-                                                $somaFundosCY = $somaFundosCY + $sFundosCY;
+                                                $somaCorrenteCY += $sCorrenteCY;
+                                                $somaPoupancaCY += $sPoupancaCY;
+                                                $somaFundosCY += $sFundosCY;
                                             endforeach;
 
                                             ?>                                    
@@ -596,25 +543,7 @@ unset($_SESSION['aba_ativa']);
                                             } else {
                                                 echo '<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#despesaModal">Incluir Nova Despesa</button>';
                                             }
-                                            ?>                                
-                                            <!-- Modal Entrega -->
-                                            <div class="modal fade" id="entregaModal" tabindex="-1" aria-labelledby="entregaModalLabel" aria-hidden="true">
-                                                <div class="modal-dialog modal-dialog-centered">
-                                                    <div class="modal-content">
-                                                        <div class="modal-header">
-                                                            <h2 class="modal-title fs-5" id="entregaModalLabel">Deseja registrar a entrega da Prestação de Contas?</h2>
-                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                        </div>
-                                                        <!--<div class="modal-body">
-                                                            Deseja realmente sair?
-                                                        </div>-->
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-danger" data-bs-dismiss="modal">NÃO</button>
-                                                            <button type="button" class="btn btn-success" onclick="location.href='?entrega=true'">SIM</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            ?>                                            
                                         </div>
                                         <div class="form-check form-switch mb-2">
                                             <input type="checkbox" name="checkMov" class="form-check-input" value="1" role="switch" id="checkMovimento" <?= $movimento ?>>
@@ -839,27 +768,7 @@ unset($_SESSION['aba_ativa']);
                                     }
                                 }                                
                             }
-                            ?>
-                            <div class="modal fade modal-trigger" id="avancarPend" tabindex="-1" aria-labelledby="avancarPendLabel" aria-hidden="true">
-                                <div class="modal-dialog modal-dialog-centered">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h2 class="modal-title fs-5" id="avancarPendLabel">Atenção!</h2>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <div class="content-fluid">
-                                                <span>Existe(m) <?= $despesasPendentes ?> pendência(s). <br>Deseja realmente avançar para análise financeira?</span>
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-success" onclick="location.href='?forceFin=true'">SIM</button>
-                                            <button type="button" class="btn btn-danger" data-bs-dismiss="modal">NÃO</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <?php
+                            
 
                             if(isset($_REQUEST['forceFin']) && $_REQUEST['forceFin'] == true)
                             {
@@ -1019,131 +928,6 @@ unset($_SESSION['aba_ativa']);
                         $botao = '<input type="submit" class="btn btn-success" value="Incluir"/>';                
                     }            
                     ?>            
-                    <!-- Modal Despesa -->
-                    <div class="modal fade modal-trigger" id="despesaModal" tabindex="-1" aria-labelledby="despesaModalLabel" aria-hidden="true">                
-                        <div class="modal-dialog modal-lg modal-dialog-centered">
-                            <div class="modal-content">
-                                <form action="<?= $action; ?>" method="post" name="despesa">
-                                    <div class="modal-header">
-                                        <h2 class="modal-title fs-5" id="despesaModalLabel"><?= $titulo; ?></h2>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        <input type="hidden" value="<?= $idDespM ?? ''; ?>" name="idDespM" />
-                                    </div>
-                                    <div class="modal-body">
-                                        <div class="content-fluid">                                    
-                                            <div class="row">
-                                                <div class="col">
-                                                    <div class="input-group input-group-sm mb-2">
-                                                        <label class="input-group-text col-4" for="inputGroup-acao">Ação</label>
-                                                        <select name="acaoId" class="form-select w-50 col-8" id="inputGroup-acao" required>
-                                                            <option <?= isset($idAcaoM) && $idAcaoM != null ? '' : 'selected'; ?> disabled="disabled">Selecione...</option>
-                                                            <?php
-                                                            $progs = $programaModel->findByProgName($tipo);                                                            
-                                                            if($progs)
-                                                            {
-                                                                foreach($progs as $prog):                                                                
-                                                                    $idAcao = $prog->id;                                                                                
-                                                                    $acao = $prog->acao; 
-                                                                    if(isset($idAcaoM) && $idAcaoM == $idAcao){
-                                                                        echo '<option value="' . $idAcao . '" selected>' . $acao . '</option>';
-                                                                    } else {
-                                                                        echo '<option value="' . $idAcao . '">' . $acao . '</option>';
-                                                                    }
-                                                                endforeach;
-                                                            }
-                                                            ?>                                                                        
-                                                        </select>                                                            
-                                                    </div>
-                                                </div>
-                                                <div class="col">
-                                                    <div class="input-group input-group-sm mb-2">
-                                                        <label class="input-group-text col-4" for="inputGroup-categDesp">Categoria</label>
-                                                        <select name="categoria" class="form-select w-50 col-8" id="inputGroup-categDesp" required>
-                                                            <option <?= isset($categoriaM) && $categoriaM != null ? '' : 'selected'; ?> disabled="disabled">Selecione...</option>                                                    
-                                                            <option value="C" <?= isset($categoriaM) && $categoriaM == 'C' ? 'selected' : ''; ?>>Custeio</option>
-                                                            <option value="K" <?= isset($categoriaM) && $categoriaM == 'K' ? 'selected' : ''; ?>>Capital</option>                                                                
-                                                        </select>                                                            
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="row">
-                                                <div class="col-7">
-                                                    <div class="input-group input-group-sm mb-2">
-                                                        <span class="input-group-text col-4" id="inputGroup-fornecedor">Fornecedor</span>
-                                                        <input type="text" name="fornecedor" class="col-8 form-control" value="<?= $fornecedorM ?? ''; ?>" aria-describedby="inputGroup-fornecedor" />
-                                                    </div>
-                                                </div>
-                                                <div class="col-5">
-                                                    <div class="input-group input-group-sm mb-2">
-                                                        <span class="input-group-text col-4" id="inputGroup-cnpjForn">CNPJ</span>
-                                                        <input type="text" name="cnpjForn" class="col-8 form-control" value="<?= $cnpjFornM ?? ''; ?>" aria-describedby="inputGroup-cnpjForn" maxlength="14" />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="input-group input-group-sm mb-2">
-                                                <span class="input-group-text col-2" id="inputGroup-descDesp">Aquisição</span>
-                                                <input type="text" name="descDesp" class="col-10 form-control" value="<?= $descricaoM ?? ''; ?>" aria-describedby="inputGroup-descDesp" />
-                                            </div>
-                                            <div class="row">
-                                                <div class="col">
-                                                    <div class="input-group input-group-sm mb-2">
-                                                        <span class="input-group-text col-4" id="inputGroup-numDoc">Nº Documento</span>
-                                                        <input type="text" name="numDoc" class="col-8 form-control" value="<?= $numDocM ?? ''; ?>"aria-describedby="inputGroup-numDoc" />
-                                                    </div>
-                                                </div>
-                                                <div class="col">
-                                                    <div class="input-group input-group-sm mb-2">
-                                                        <span class="input-group-text col-4" id="inputGroup-numPgto">Ident. Pagamento</span>
-                                                        <input type="text" name="numPgto" class="col-8 form-control" value="<?= $numPgtoM ?? ''; ?>" aria-describedby="inputGroup-numPgto" />
-                                                    </div>                                                  
-                                                </div>
-                                            </div>
-                                            <div class="row">
-                                                <div class="col">
-                                                    <div class="input-group input-group-sm mb-2">
-                                                        <span class="input-group-text col-4" id="inputGroup-dataDoc">Data</span>
-                                                        <input type="date" name="dataDoc" class="col-8 form-control" value="<?= $dataDespM ?? ''; ?>" aria-describedby="inputGroup-dataDoc" />
-                                                    </div>
-                                                </div>
-                                                <div class="col">
-                                                    <div class="input-group input-group-sm mb-2">
-                                                        <span class="input-group-text col-4" id="inputGroup-valDesp">Valor da Despesa</span>
-                                                        <input type="text" name="valDesp" class="col-8 form-control" value="<?= $valorReal  ?? ''; ?>" aria-describedby="inputGroup-valDesp" />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="row">
-                                                <div class="col">
-                                                    <div class="form-check form-switch mb-2">
-                                                        <input type="checkbox" name="checkProg" class="form-check-input" value="1" role="switch" id="checkProg" <?= $checkProgM ?? '';?>>
-                                                        <label class="form-check-label" for="checkProg">De Acordo com o Programa?</label>
-                                                    </div>
-                                                    <div class="form-check form-switch mb-2">
-                                                        <input type="checkbox" name="checkEnquad" class="form-check-input" value="1" role="switch" id="checkEnquad" <?= $checkEnqM ?? '';?>>
-                                                        <label class="form-check-label" for="checkEnquad">Enquadramento Correto?</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col">                                                            
-                                                    <div class="form-check form-switch mb-2">
-                                                        <input type="checkbox" name="checkAta" class="form-check-input" value="1" role="switch" id="checkAta" <?= $checkAtaM ?? '';?>>
-                                                        <label class="form-check-label" for="checkAta">Possui Ata de deliberação?</label>
-                                                    </div>
-                                                    <div class="form-check form-switch mb-2">
-                                                        <input type="checkbox" name="checkConso" class="form-check-input" value="1" role="switch" id="checkConso" <?= $checkConsM ?? '';?>>
-                                                        <label class="form-check-label" for="checkConso">Possui Consolidação de Pesquisa de Preços?</label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>                                                    
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cancelar</button>
-                                        <?= $botao; ?>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- ANÁLISE FINANCEIRA -->
                     <div class="tab-pane fade <?= $abaAtiva == 'analiseFinanceira' ? 'show active' : '' ?>" id="nav-finan" role="tabpanel" aria-labelledby="nav-finan-tab" tabindex="0">
@@ -1561,125 +1345,7 @@ unset($_SESSION['aba_ativa']);
                     }      
                     ?>
                     
-                    <!-- Modal Pendências -->
-                    <div class="modal fade" id="pendenciaModal" tabindex="-1" aria-labelledby="pendenciaModalLabel" aria-hidden="true">
-                        <div class="modal-dialog modal-lg modal-dialog-centered">
-                            <div class="modal-content">
-                                <form action="<?= $actionP ?>" method="post" name="pendencia">
-                                    <div class="modal-header">
-                                        <h2 class="modal-title fs-5" id="pendenciaModalLabel"><?= $tituloP ?></h2>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        <input type="hidden" value="<?= $idPendM ?? ''; ?>" name="idPendM" />
-                                    </div>
-                                    <div class="modal-body">
-                                        <div class="content-fluid">
-                                            <div class="row">                                        
-                                                <div class="col-3">
-                                                    <div class="input-group input-group-sm mb-2">
-                                                        <span class="input-group-text col-6" id="inputGroup-itemDRD">Item DRD</span>
-                                                        <input type="text" name="itemDRD" value="<?= $iDRDM ?? ''; ?>" class="col-6 form-control" aria-describedby="inputGroup-itemDRD" />
-                                                    </div>
-                                                </div>
-                                                <div class="col-9">
-                                                    <div class="input-group input-group-sm mb-2">
-                                                        <label class="input-group-text col-3" for="inputGroup-docPend">Documento</label>
-                                                        <select name="docPend" class="form-select col-9" id="inputGroup-docPend" required>                                                    
-                                                            <option disabled <?= isset($docPendIdM) && $docPendIdM != null ? '' : 'selected'; ?>>Selecione...</option>
-                                                            <?php
-                                                            $docs = $documentoModel->all();
-                                                            if($docs)
-                                                            {
-                                                                foreach($docs as $doc):
-                                                                
-                                                                    $idDoc = $doc->id;                                                                                
-                                                                    $docPend = $doc->documento;
-                                                                    $pdde = $doc->pdde;
-                                                                    if($pdde == 1){
-                                                                        if(isset($docPendIdM) && $docPendIdM == $idDoc){
-                                                                            echo '<option value="' . $idDoc . '" selected>' . $docPend . '</option>';
-                                                                        } else {  
-                                                                            echo '<option value="' . $idDoc . '">' . $docPend . '</option>';
-                                                                        }
-                                                                    }                                                                    
-                                                                endforeach;
-                                                            }
-                                                            ?>                                                     
-                                                        </select>                                                            
-                                                    </div>
-                                                </div>
-                                            </div>                                    
-                                            <div class="row">                                        
-                                                <div class="input-group input-group-sm mb-2">
-                                                    <span class="input-group-text col-2" id="inputGroup-favorecido">Favorecido</span>
-                                                    <input type="text" name="favorecido" value="<?= $favorecidoM ?? ''; ?>" class="col-10 form-control" aria-describedby="inputGroup-favorecido" />
-                                                </div>
-                                            </div>
-                                            <div class="row">
-                                                <div class="col">
-                                                    <div class="input-group input-group-sm mb-2">
-                                                        <span class="input-group-text col-4" id="inputGroup-dataDocP">Data Documento</span>
-                                                        <input type="date" name="dataDocP" value="<?= $dataDocPendM ?? ''; ?>" class="col-8 form-control" aria-describedby="inputGroup-dataDocP" />
-                                                    </div>                                                  
-                                                </div>
-                                                <div class="col">
-                                                    <div class="input-group input-group-sm mb-2">
-                                                        <span class="input-group-text col-4" id="inputGroup-numDocP">Nº Documento</span>
-                                                        <input type="text" name="numDocP" value="<?= $numDocPendM ?? ''; ?>" class="col-8 form-control" aria-describedby="inputGroup-numDocP" />
-                                                    </div>
-                                                </div>                                        
-                                            </div>
-                                            <div class="row">                                        
-                                                <div class="input-group input-group-sm mb-2">
-                                                    <label class="input-group-text col-2" for="inputGroup-pendencia">Pendência</label>
-                                                    <select name="pendencia" class="form-select col-10" id="inputGroup-pendencia">
-                                                        <option disabled <?= isset($pendIdM) && $pendIdM != null ? '' : 'selected'; ?>>Selecione...</option>
-                                                        <?php
-                                                        $tipos = $pendenciaModel->allTipos();
-                                                        if($tipos)
-                                                        {
-                                                            foreach($tipos as $tipo)
-                                                            {
-                                                                $idTipoPend = $tipo->id;
-                                                                $tipoPend = $tipo->pendencia;
-                                                                if(isset($pendIdM) && $pendIdM == $idTipoPend){
-                                                                    echo '<option value="' . $idTipoPend . '" selected>' . $tipoPend . '</option>';
-                                                                } else {
-                                                                    echo '<option value="' . $idTipoPend . '">' . $tipoPend . '</option>';
-                                                                }                                                        
-                                                            }
-                                                        }
-                                                        ?>                                                                                                  
-                                                    </select>                                                            
-                                                </div>
-                                            </div>
-                                            <div class="row">                                        
-                                                <div class="input-group input-group-sm mb-2">
-                                                    <span class="input-group-text col-2" id="inputGroup-providencias">Providências</span>
-                                                    <textarea name="providencias" class="col-10 form-control" aria-describedby="inputGroup-providencias" rows="3" maxlength="1024"><?= $providenciasM ?? ''; ?></textarea>
-                                                </div>
-                                            </div>                                 
-                                            <div class="form-check form-check-inline">
-                                                <input type="radio" name="etapaPend" class="form-check-input" value="1" id="rJuntada" <?= isset($etapaIdM) && $etapaIdM == 1 ? "checked" : "" ?> />
-                                                <label class="form-check-label" for="rJuntada">Juntada</label>
-                                            </div>                                    
-                                            <div class="form-check form-check-inline">
-                                                <input type="radio" name="etapaPend" class="form-check-input" value="2" id="rExecucao" <?= isset($etapaIdM) && $etapaIdM == 2 ? "checked" : "" ?> />
-                                                <label class="form-check-label" for="rExecucao">Execução</label>
-                                            </div>
-                                            <div class="form-check form-check-inline">
-                                                <input type="radio" name="etapaPend" class="form-check-input" value="3" id="rFinanceira" <?= isset($etapaIdM) && $etapaIdM == 3 ? "checked" : "" ?> />
-                                                <label class="form-check-label" for="rFinanceira">Financeira</label>
-                                            </div>                                    
-                                        </div>                                                    
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cancelar</button>
-                                        <?= $botaoP ?>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
+                    
                     <!-- Fim Modal Pendências -->            
                 </div>        
             </div>
@@ -1688,9 +1354,303 @@ unset($_SESSION['aba_ativa']);
         </div>
     </div>
 
+    <!-- Modal Entrega -->
+    <div class="modal fade" id="entregaModal" tabindex="-1" aria-labelledby="entregaModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-5" id="entregaModalLabel">Deseja registrar a entrega da Prestação de Contas?</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <!--<div class="modal-body">
+                    Deseja realmente sair?
+                </div>-->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">NÃO</button>
+                    <button type="button" class="btn btn-success" onclick="location.href='?entrega=true'">SIM</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Despesa -->
+    <div class="modal fade modal-trigger" id="despesaModal" tabindex="-1" aria-labelledby="despesaModalLabel" aria-hidden="true">                
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <form action="<?= $action; ?>" method="post" name="despesa">
+                    <div class="modal-header">
+                        <h2 class="modal-title fs-5" id="despesaModalLabel"><?= $titulo; ?></h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <input type="hidden" value="<?= $idDespM ?? ''; ?>" name="idDespM" />
+                    </div>
+                    <div class="modal-body">
+                        <div class="content-fluid">                                    
+                            <div class="row">
+                                <div class="col">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <label class="input-group-text col-4" for="inputGroup-acao">Ação</label>
+                                        <select name="acaoId" class="form-select w-50 col-8" id="inputGroup-acao" required>
+                                            <option <?= isset($idAcaoM) && $idAcaoM != null ? '' : 'selected'; ?> disabled="disabled">Selecione...</option>
+                                            <?php
+                                            $progs = $programaModel->findByProgName($tipo);                                                            
+                                            if($progs)
+                                            {
+                                                foreach($progs as $prog):                                                                
+                                                    $idAcao = $prog->id;                                                                                
+                                                    $acao = $prog->acao; 
+                                                    if(isset($idAcaoM) && $idAcaoM == $idAcao){
+                                                        echo '<option value="' . $idAcao . '" selected>' . $acao . '</option>';
+                                                    } else {
+                                                        echo '<option value="' . $idAcao . '">' . $acao . '</option>';
+                                                    }
+                                                endforeach;
+                                            }
+                                            ?>                                                                        
+                                        </select>                                                            
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <label class="input-group-text col-4" for="inputGroup-categDesp">Categoria</label>
+                                        <select name="categoria" class="form-select w-50 col-8" id="inputGroup-categDesp" required>
+                                            <option <?= isset($categoriaM) && $categoriaM != null ? '' : 'selected'; ?> disabled="disabled">Selecione...</option>                                                    
+                                            <option value="C" <?= isset($categoriaM) && $categoriaM == 'C' ? 'selected' : ''; ?>>Custeio</option>
+                                            <option value="K" <?= isset($categoriaM) && $categoriaM == 'K' ? 'selected' : ''; ?>>Capital</option>                                                                
+                                        </select>                                                            
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-7">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <span class="input-group-text col-4" id="inputGroup-fornecedor">Fornecedor</span>
+                                        <input type="text" name="fornecedor" class="col-8 form-control" value="<?= $fornecedorM ?? ''; ?>" aria-describedby="inputGroup-fornecedor" />
+                                    </div>
+                                </div>
+                                <div class="col-5">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <span class="input-group-text col-4" id="inputGroup-cnpjForn">CNPJ</span>
+                                        <input type="text" name="cnpjForn" class="col-8 form-control" value="<?= $cnpjFornM ?? ''; ?>" aria-describedby="inputGroup-cnpjForn" maxlength="14" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="input-group input-group-sm mb-2">
+                                <span class="input-group-text col-2" id="inputGroup-descDesp">Aquisição</span>
+                                <input type="text" name="descDesp" class="col-10 form-control" value="<?= $descricaoM ?? ''; ?>" aria-describedby="inputGroup-descDesp" />
+                            </div>
+                            <div class="row">
+                                <div class="col">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <span class="input-group-text col-4" id="inputGroup-numDoc">Nº Documento</span>
+                                        <input type="text" name="numDoc" class="col-8 form-control" value="<?= $numDocM ?? ''; ?>"aria-describedby="inputGroup-numDoc" />
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <span class="input-group-text col-4" id="inputGroup-numPgto">Ident. Pagamento</span>
+                                        <input type="text" name="numPgto" class="col-8 form-control" value="<?= $numPgtoM ?? ''; ?>" aria-describedby="inputGroup-numPgto" />
+                                    </div>                                                  
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <span class="input-group-text col-4" id="inputGroup-dataDoc">Data</span>
+                                        <input type="date" name="dataDoc" class="col-8 form-control" value="<?= $dataDespM ?? ''; ?>" aria-describedby="inputGroup-dataDoc" />
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <span class="input-group-text col-4" id="inputGroup-valDesp">Valor da Despesa</span>
+                                        <input type="text" name="valDesp" class="col-8 form-control" value="<?= $valorReal  ?? ''; ?>" aria-describedby="inputGroup-valDesp" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col">
+                                    <div class="form-check form-switch mb-2">
+                                        <input type="checkbox" name="checkProg" class="form-check-input" value="1" role="switch" id="checkProg" <?= $checkProgM ?? '';?>>
+                                        <label class="form-check-label" for="checkProg">De Acordo com o Programa?</label>
+                                    </div>
+                                    <div class="form-check form-switch mb-2">
+                                        <input type="checkbox" name="checkEnquad" class="form-check-input" value="1" role="switch" id="checkEnquad" <?= $checkEnqM ?? '';?>>
+                                        <label class="form-check-label" for="checkEnquad">Enquadramento Correto?</label>
+                                    </div>
+                                </div>
+                                <div class="col">                                                            
+                                    <div class="form-check form-switch mb-2">
+                                        <input type="checkbox" name="checkAta" class="form-check-input" value="1" role="switch" id="checkAta" <?= $checkAtaM ?? '';?>>
+                                        <label class="form-check-label" for="checkAta">Possui Ata de deliberação?</label>
+                                    </div>
+                                    <div class="form-check form-switch mb-2">
+                                        <input type="checkbox" name="checkConso" class="form-check-input" value="1" role="switch" id="checkConso" <?= $checkConsM ?? '';?>>
+                                        <label class="form-check-label" for="checkConso">Possui Consolidação de Pesquisa de Preços?</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>                                                    
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cancelar</button>
+                        <?= $botao; ?>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal fade modal-trigger" id="avancarPend" tabindex="-1" aria-labelledby="avancarPendLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-5" id="avancarPendLabel">Atenção!</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="content-fluid">
+                        <span>Existe(m) <?= $despesasPendentes ?> pendência(s). <br>Deseja realmente avançar para análise financeira?</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" onclick="location.href='?forceFin=true'">SIM</button>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">NÃO</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Pendências -->
+    <div class="modal fade" id="pendenciaModal" tabindex="-1" aria-labelledby="pendenciaModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <form action="<?= $actionP ?>" method="post" name="pendencia">
+                    <div class="modal-header">
+                        <h2 class="modal-title fs-5" id="pendenciaModalLabel"><?= $tituloP ?></h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <input type="hidden" value="<?= $idPendM ?? ''; ?>" name="idPendM" />
+                    </div>
+                    <div class="modal-body">
+                        <div class="content-fluid">
+                            <div class="row">                                        
+                                <div class="col-3">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <span class="input-group-text col-6" id="inputGroup-itemDRD">Item DRD</span>
+                                        <input type="text" name="itemDRD" value="<?= $iDRDM ?? ''; ?>" class="col-6 form-control" aria-describedby="inputGroup-itemDRD" />
+                                    </div>
+                                </div>
+                                <div class="col-9">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <label class="input-group-text col-3" for="inputGroup-docPend">Documento</label>
+                                        <select name="docPend" class="form-select col-9" id="inputGroup-docPend" required>                                                    
+                                            <option disabled <?= isset($docPendIdM) && $docPendIdM != null ? '' : 'selected'; ?>>Selecione...</option>
+                                            <?php
+                                            $docs = $documentoModel->all();
+                                            if($docs)
+                                            {
+                                                foreach($docs as $doc):
+                                                
+                                                    $idDoc = $doc->id;                                                                                
+                                                    $docPend = $doc->documento;
+                                                    $pdde = $doc->pdde;
+                                                    if($pdde == 1){
+                                                        if(isset($docPendIdM) && $docPendIdM == $idDoc){
+                                                            echo '<option value="' . $idDoc . '" selected>' . $docPend . '</option>';
+                                                        } else {  
+                                                            echo '<option value="' . $idDoc . '">' . $docPend . '</option>';
+                                                        }
+                                                    }                                                                    
+                                                endforeach;
+                                            }
+                                            ?>                                                     
+                                        </select>                                                            
+                                    </div>
+                                </div>
+                            </div>                                    
+                            <div class="row">                                        
+                                <div class="input-group input-group-sm mb-2">
+                                    <span class="input-group-text col-2" id="inputGroup-favorecido">Favorecido</span>
+                                    <input type="text" name="favorecido" value="<?= $favorecidoM ?? ''; ?>" class="col-10 form-control" aria-describedby="inputGroup-favorecido" />
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <span class="input-group-text col-4" id="inputGroup-dataDocP">Data Documento</span>
+                                        <input type="date" name="dataDocP" value="<?= $dataDocPendM ?? ''; ?>" class="col-8 form-control" aria-describedby="inputGroup-dataDocP" />
+                                    </div>                                                  
+                                </div>
+                                <div class="col">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <span class="input-group-text col-4" id="inputGroup-numDocP">Nº Documento</span>
+                                        <input type="text" name="numDocP" value="<?= $numDocPendM ?? ''; ?>" class="col-8 form-control" aria-describedby="inputGroup-numDocP" />
+                                    </div>
+                                </div>                                        
+                            </div>
+                            <div class="row">                                        
+                                <div class="input-group input-group-sm mb-2">
+                                    <label class="input-group-text col-2" for="inputGroup-pendencia">Pendência</label>
+                                    <select name="pendencia" class="form-select col-10" id="inputGroup-pendencia">
+                                        <option disabled <?= isset($pendIdM) && $pendIdM != null ? '' : 'selected'; ?>>Selecione...</option>
+                                        <?php
+                                        $tipos = $pendenciaModel->allTipos();
+                                        if($tipos)
+                                        {
+                                            foreach($tipos as $tipo)
+                                            {
+                                                $idTipoPend = $tipo->id;
+                                                $tipoPend = $tipo->pendencia;
+                                                if(isset($pendIdM) && $pendIdM == $idTipoPend){
+                                                    echo '<option value="' . $idTipoPend . '" selected>' . $tipoPend . '</option>';
+                                                } else {
+                                                    echo '<option value="' . $idTipoPend . '">' . $tipoPend . '</option>';
+                                                }                                                        
+                                            }
+                                        }
+                                        ?>                                                                                                  
+                                    </select>                                                            
+                                </div>
+                            </div>
+                            <div class="row">                                        
+                                <div class="input-group input-group-sm mb-2">
+                                    <span class="input-group-text col-2" id="inputGroup-providencias">Providências</span>
+                                    <textarea name="providencias" class="col-10 form-control" aria-describedby="inputGroup-providencias" rows="3" maxlength="1024"><?= $providenciasM ?? ''; ?></textarea>
+                                </div>
+                            </div>                                 
+                            <div class="form-check form-check-inline">
+                                <input type="radio" name="etapaPend" class="form-check-input" value="1" id="rJuntada" <?= isset($etapaIdM) && $etapaIdM == 1 ? "checked" : "" ?> />
+                                <label class="form-check-label" for="rJuntada">Juntada</label>
+                            </div>                                    
+                            <div class="form-check form-check-inline">
+                                <input type="radio" name="etapaPend" class="form-check-input" value="2" id="rExecucao" <?= isset($etapaIdM) && $etapaIdM == 2 ? "checked" : "" ?> />
+                                <label class="form-check-label" for="rExecucao">Execução</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input type="radio" name="etapaPend" class="form-check-input" value="3" id="rFinanceira" <?= isset($etapaIdM) && $etapaIdM == 3 ? "checked" : "" ?> />
+                                <label class="form-check-label" for="rFinanceira">Financeira</label>
+                            </div>                                    
+                        </div>                                                    
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cancelar</button>
+                        <?= $botaoP ?>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <?php include 'modalSair.php'; ?>
     <?php include 'toasts.php'; ?>
     <?php include 'footer.php'; ?>
+
+    <?php if (!empty($modalToOpen)): ?>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var myModal = new bootstrap.Modal(document.getElementById('<?= $modalToOpen ?>'));
+            myModal.show();
+        });
+    </script>
+    <?php endif; ?>
     
     <script src="./js/script.js"></script>
     <script src="./js/bootstrap/bootstrap.bundle.min.js"></script>    

@@ -207,7 +207,7 @@ class Saldo extends Model
         return $stmt->execute($params);
     }
 
-    public function contColumsAF(int $idProc): bool
+    public function contColumsAF(int $idProc): int
     {             
         $stmt = $this->pdo->prepare("SELECT COUNT(*) AS contagem FROM saldo_pdde WHERE proc_id = :idProc");        
         $stmt->execute(['idProc' => $idProc]);

@@ -4,9 +4,19 @@ session_start();
 
 require_once __DIR__ . "/source/autoload.php";
 
+// Trava de segurança: Se não houver cota na sessão, mata o processo e fecha a aba
+if (empty($_SESSION['cota']) || !isset($_SESSION['cota'][0])) {
+    echo "<script>
+            alert('Atenção: Nenhuma cota foi gerada pelo sistema. Redirecionando...');
+            window.close(); // Tenta fechar a aba
+            window.location.href = 'gerarcota.php'; // Se o navegador bloquear o fechamento, manda de volta
+          </script>";
+    exit();
+}
+
 use Source\Database\Connect;
-use Source\Instituicao;
-use Source\ItensCota;
+use Source\Models\Instituicao;
+use Source\Models\ItensCota;
 
 $instituicaoModel = new Instituicao();
 $itensModel = new ItensCota();
@@ -22,6 +32,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://cdn.lineicons.com/4.0/lineicons.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Rubik+Doodle+Shadow&display=swap" rel="stylesheet">
     <?php 
         $arrayCota = array($_SESSION['cota'][0]);
@@ -41,7 +52,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                 $programa = "PDDE Qualidade";
                 break;
             case 3:
-                $programa = "PDDE Estrutura";
+                $programa = "PDDE Equidade";
                 break;
             case 4:
                 $programa = "PDDE Educação Integral";
@@ -68,63 +79,30 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
         <p><b>Serviço:</b></p>
         <p style="text-indent: 3em;">Juntamos os seguintes documentos relativos à prestação de contas do Exercício de 2025:</p>
         <ul style="text-indent: 1em; list-style-position: inside;">
-        <?php 
-                
-        foreach($arrayCota[0] as $item => $valor)
-        {             
-            $doc = $itensModel->findByCh($item);
-            if($doc)
-            {
-                echo "<li>" . $doc->documentos . ";</li>";
-            }            
-        }      
-                
-        $hoje = new DateTime();
-        $hoje->setTimezone($timezone);
-        
-        $dia = $hoje->format('d'); 
-        $mes = $hoje->format('m');
-        $ano = $hoje->format('Y');
+            <?php 
+                    
+            foreach($arrayCota[0] as $item => $valor)
+            {             
+                $doc = $itensModel->findByCh($item);
+                if($doc)
+                {
+                    echo "<li>" . $doc->documentos . ";</li>";
+                }            
+            }      
+                    
+            $hoje = new DateTime();
+            $hoje->setTimezone($timezone);
+            
+            $dia = $hoje->format('d'); 
+            $mes = $hoje->format('m');
+            $ano = $hoje->format('Y');
 
-        switch($mes)
-        {
-            case 1:
-                $mes = "janeiro";
-                break;
-            case 2:
-                $mes = "fevereiro";
-                break;
-            case 3:
-                $mes = "março";
-                break;
-            case 4:
-                $mes = "abril";
-                break;
-            case 5:
-                $mes = "maio";
-                break;
-            case 6:
-                $mes = "junho";
-                break;
-            case 7:
-                $mes = "julho";
-                break;
-            case 8:
-                $mes = "agosto";
-                break;
-            case 9:
-                $mes = "setembro";
-                break;
-            case 10:
-                $mes = "outubro";
-                break;
-            case 11:
-                $mes = "novembro";
-                break;
-            case 12:
-                $mes = "dezembro";
-                break;
-        }
+            $mesesNome = [
+                '01' => 'janeiro', '02' => 'fevereiro', '03' => 'março', '04' => 'abril',
+                '05' => 'maio', '06' => 'junho', '07' => 'julho', '08' => 'agosto',
+                '09' => 'setembro', '10' => 'outubro', '11' => 'novembro', '12' => 'dezembro'
+            ];
+            $mes = $mesesNome[$mes];
         
             ?>
         </ul>
@@ -158,6 +136,40 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
         Mat <?= $_SESSION['matricula'] ?></p>
 
     </div>    
+    
+    <button onclick="window.close()" class="btn btn-danger rounded-circle shadow no-print" style="position: fixed; bottom: 100px; right: 30px; width: 60px; height: 60px;" title="Fechar aba">
+        <i class="lni lni-close" style="font-size: 1.5rem;"></i>
+    </button>
+    <button onclick="window.print()" class="btn btn-primary rounded-circle shadow no-print" style="position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px;">
+        <i class="lni lni-printer" style="font-size: 1.5rem;"></i>
+    </button>
+
+    <style>
+    /* Tudo que tiver a classe .no-print VAI SUMIR na hora que o PDF for gerado */
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        
+        /* Remove cabeçalhos/rodapés com URL/Data do navegador e força o formato A4 */
+        @page {
+            size: A4;
+            margin: 1.5cm; /* Define uma margem limpa e uniforme */
+        }
+        
+        /* Garante que o corpo do texto fique preto para impressoras P&B economizarem tinta colorida (se houver tons de cinza) */
+        body {
+            color: #000 !important;
+        }
+    }
+    </style>
+
+    <script>
+    // Abre a tela de impressão automaticamente assim que a página carrega
+    window.onload = function() {
+        window.print();
+    };
+    </script>   
 
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js" integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+" crossorigin="anonymous"></script>

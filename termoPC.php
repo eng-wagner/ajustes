@@ -2,10 +2,79 @@
 ob_start();
 session_start();
 
-require __DIR__ . "/source/autoload.php";
-use Source\Database\Connect;
-
 $timezone = new DateTimeZone("America/Sao_Paulo");
+
+require_once __DIR__ . "/source/autoload.php";
+require_once __DIR__ . "/source/Helpers/Helpers.php";
+
+use Source\Database\Connect;
+use Source\Models\Logs;
+use Source\Models\User;
+use Source\Models\Instituicao;
+use Source\Models\Processo;
+
+// 1. Instancia Apenas o User inicialmente
+$userModel = new User();
+
+// 2. Verifica Segurança IMEDIATAMENTE
+if (empty($_SESSION['user_id'])) {
+    header("Location: index.php?status=sessao_invalida");
+    exit();
+}
+
+// 3. Dados do Usuário Logado
+$loggedUser = $userModel->findById($_SESSION['user_id']);
+if ($loggedUser) {
+    $userName = $loggedUser->nome;
+    $firstName = substr($userName, 0, strpos($userName, " "));
+    $perfil = $loggedUser->perfil;
+} else {    
+    session_destroy();
+    header("Location: index.php?status=sessao_invalida");
+    exit();
+}
+
+if (!isset($_SESSION['idProc'])) {
+    header('Location:buscar.php');
+    exit();
+}
+
+// ====================================================================
+// 4. Carregamento dos outros Models e Variáveis de Sessão
+// ====================================================================
+$logModel = new Logs();
+$instituicaoModel = new Instituicao();
+$processoModel = new Processo();
+
+$currentUser = $_SESSION['user_id'];
+$idProc = (int) $_SESSION['idProc'];
+
+// Buscas Iniciais e Dados do Processo
+$processo = $processoModel->findById($idProc);
+
+if($processo->tipo != "Termo de Colaboração"){
+    redirecionar('buscar.php', 'erro', 'Selecione um processo do tipo Termo de Colaboração.');    
+}
+
+// if($processo){
+//     $instituicao = $instituicaoModel->findById($processo->instituicao_id);
+//     $numProcesso = $processoModel->formatarProcesso($processo);
+//     $tipoPrograma = $processo->tipo;
+//     $tipoProcesso = $processo->assunto . ' - ' . $tipoPrograma;
+//     $idInst = $instituicao->id;
+//     $cnpj = $instituicaoModel->formatarCnpj($instituicao);    
+//     $iNome = $instituicao->instituicao;
+//     $iEmail = $instituicao->email;
+//     $iEndereco = $instituicao->endereco;
+//     $inep = $instituicao->inep;
+//     $iTelefone = $instituicao->telefone;
+    
+//     $contabilidade = $contModel->findById($instituicao->cont_id);    
+//     $cNome = $contabilidade->c_nome;
+//     $cTelefone = $contabilidade->c_telefone;
+//     $cEmail = $contabilidade->c_email;
+// }
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -29,50 +98,6 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
 
 <body>
     <?php
-
-    if($_SESSION['flag'] == false){
-        header("Location:index.php");
-    }
-
-    if (isset($_REQUEST["logoff"]) && $_REQUEST["logoff"] == true) {
-        $_SESSION['flag'] = false;
-        session_unset();
-        header("Location:index.php");
-    }
-
-    $sql = Connect::getInstance()->prepare("SELECT nome, perfil FROM usuarios WHERE id = :idUser");
-    $sql->bindParam('idUser',$_SESSION['user_id']);
-    if($sql->execute())
-    {
-        if($proc = $sql->fetch()){
-            $userName = $proc->nome;
-            $perfil = $proc->perfil;
-        }
-    }
-    
-    $firstName = substr($userName,0,strpos($userName," "));        
-
-    if(isset($_REQUEST['pddeAE']) && $_REQUEST['pddeAE'] == true){
-        $_SESSION['nav'] = array("active","","","","");
-        $_SESSION['navShow'] = array("show active","","","","");
-        $_SESSION['sel'] = array("true","false","false","false","false");
-        header("Location:termoPC.php");
-    }
-
-    if(isset($_REQUEST['pddeAF']) && $_REQUEST['pddeAF'] == true){
-        $_SESSION['navF'] = array("active","","","","","");
-        $_SESSION['navShowF'] = array("show active","","","","","");
-        $_SESSION['selF'] = array("true","false","false","false","false","false");
-        header("Location:pddeFinanc.php");
-    }
-
-    if(isset($_REQUEST['analiseTC']) && $_REQUEST['analiseTC'] == true){
-        $_SESSION['nav'] = array("active","","","","");
-        $_SESSION['navShow'] = array("show active","","","","");
-        $_SESSION['sel'] = array("true","false","false","false","false");
-        header("Location:termoPC.php");
-    }
-
     if(isset($_SESSION['idProc']) && $_SESSION['idProc'] > 0 )
     {    
         $sql = Connect::getInstance()->prepare("SELECT i.instituicao, i.cnpj, i.email, i.endereco, i.inep, i.telefone, p.orgao, p.numero, p.ano, p.digito, p.assunto,

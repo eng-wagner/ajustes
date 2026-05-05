@@ -3,6 +3,7 @@ ob_start();
 session_start();
 
 require_once __DIR__ . "/source/autoload.php";
+require_once __DIR__ . "/source/Helpers/Helpers.php";
 
 date_default_timezone_set("America/Sao_Paulo");
 $timezone = new DateTimeZone("America/Sao_Paulo");
@@ -20,21 +21,6 @@ use Source\Models\Logs;
 use Source\Models\Analise;
 use Source\Models\Rentabilidade;
 use Source\Models\Conciliacao;
-
-// ====================================================================
-// FUNÇÃO HELPER: Limpar formato de moeda (R$ 1.500,00 -> 1500.00)
-// ====================================================================
-function limparMoedaSQL($valor) {
-    if (empty($valor)) return 0.00;
-    $limpo = preg_replace('/[^0-9,-]/', '', $valor); // Remove R$ e pontos
-    return (float) str_replace(',', '.', $limpo); // Troca vírgula por ponto
-}
-
-function redirecionar(string $url, string $tipo, string $mensagem) {
-    $_SESSION[$tipo == 'sucesso' ? 'toast_sucesso' : 'toast_erro'] = $mensagem;
-    header("Location: $url");
-    exit();
-}
 
 // 1. Instancia Apenas o User inicialmente
 $userModel = new User();
@@ -85,6 +71,10 @@ $processo = $processoModel->findById($idProc);
 $statusProcesso = $processoModel->procStatus($idProc);
 $dadosAnalise = $analiseModel->findByProcessoId($idProc);
 $dadosConciliacao = $conciliacaoModel->getOcorrencias($idProc);
+
+if($processo->tipo === "Termo de Colaboração"){
+    redirecionar('buscar.php', 'erro', 'Selecione um processo do tipo PDDE.');    
+}
 
 if($processo){
     $instituicao = $instituicaoModel->findById($processo->instituicao_id);
@@ -590,7 +580,6 @@ unset($_SESSION['aba_ativa']);
                         <form action="?concluirAf=true" method="post">                                
                             <div class="row">
                                 <h6 class="text-center">RESUMO GERAL</h6>
-
                                 <table class="table table-hover">
                                     <thead>
                                         <tr class="text-center align-middle table-secondary">
@@ -625,8 +614,7 @@ unset($_SESSION['aba_ativa']);
                                         $saldoFinalC = 0;
                                         $glosasC = 0;
                                         $procC = $saldoModel->findSaldoByProcCat($idProc, $cat);
-                                        if ($procC) 
-                                        {
+                                        if ($procC):                                         
                                             foreach ($procC as $proc):
                                                 $repasse = 0;
                                                 $despesa = 0;
@@ -639,56 +627,55 @@ unset($_SESSION['aba_ativa']);
                                                 $acaoId = $proc->acao_id;
                                                 
                                                 $acao = $programaModel->findById($acaoId)->acao;
-
-                                                echo '<tr class="text-end align-middle">';
-                                                echo '<td scope="row" class="text-start">' . $acao . '</td>';
-                                                echo '<td>' . number_format($saldo, 2, ",", ".") . '</td>';
-                                                $value = $repasseModel->somaRepasseCByProcAcao($idProc, $acaoId);                                                    
-                                                if (!empty($value)) {
-                                                    $repasse = $value;
-                                                }                                            
-                                                if ($repasse == null) {
-                                                    $repasse = 0;
-                                                }
-                                                echo '<td>' . number_format($repasse, 2, ",", ".") . '</td>';
-                                                echo '<td>' . number_format($rp, 2, ",", ".") . '</td>';
-                                                echo '<td>' . number_format($rent, 2, ",", ".") . '</td>';
-                                                echo '<td>' . number_format($devolucao, 2, ",", ".") . '</td>';
+                                                
+                                                $value = $repasseModel->somaRepasseCByProcAcao($idProc, $acaoId);                                                                                                    
+                                                if (!empty($value)) $repasse = $value;
+                                                
                                                 $receita = $saldo + $repasse + $rp + $rent - $devolucao;
-                                                echo '<td>' . number_format($receita, 2, ",", ".") . '</td>';
-                                                $value = $despesaModel->somaByCatAcaoProc($idProc, $acaoId, $cat);
-                                                if (!empty($value)) {                                                        
-                                                    $despesa = $value;
-                                                }                                                    
-                                                if ($despesa == null) {
-                                                    $despesa = 0;
-                                                }
-                                                echo '<td>' . number_format($despesa, 2, ",", ".") . '</td>';
+
+                                                $valueD = $despesaModel->somaByCatAcaoProc($idProc, $acaoId, $cat);
+                                                if (!empty($valueD)) $despesa = $valueD;
+                                                
                                                 $valueG = $despesaModel->somaGlosaByAcaoProc($idProc, $acaoId, $cat);
-                                                if (!empty($valueG)) {                                                        
-                                                    $glosas = $valueG;
-                                                }                                                    
-                                                if ($glosas == null) {
-                                                    $glosas = 0;
-                                                }                                                    
-                                                echo '<td>' . number_format($glosas, 2, ",", ".") . '</td>';
+                                                if (!empty($valueG)) $glosas = $valueG;                                                                                               
+                            
                                                 $saldoFinal = $receita - $despesa + $glosas;
-                                                echo '<td>' . number_format($saldoFinal, 2, ",", ".") . '</td>';
-                                                echo '<td class="text-center"><a href="?editSaldo=true&idSaldo=' . $idSaldoC . '"><img src="img/icons/currency-dollar.svg" alt="Editar Saldo" title="Editar Saldo" /></a></td>';
+
                                                 $currentSaldo = array('id' => $idSaldoC, 'saldo' => $saldoFinal);
                                                 array_push($arrSaldoF, $currentSaldo);
-                                                echo '</tr>';
-                                                $saldoC = $saldoC + $saldo;
-                                                $repasseC = $repasseC + $repasse;
-                                                $rpC = $rpC + $rp;
-                                                $rentC = $rentC + $rent;
-                                                $devolucaoC = $devolucaoC + $devolucao;
-                                                $receitaC = $receitaC + $receita;
-                                                $despesaC = $despesaC + $despesa;
-                                                $glosasC = $glosasC + $glosas;
-                                                $saldoFinalC = $saldoFinalC + $saldoFinal;
+
+                                                // Somatórios do rodapé
+                                                $saldoC += $saldo;
+                                                $repasseC += $repasse;
+                                                $rpC += $rp;
+                                                $rentC += $rent;
+                                                $devolucaoC += $devolucao;
+                                                $receitaC += $receita;
+                                                $despesaC += $despesa;
+                                                $glosasC += $glosas;
+                                                $saldoFinalC += $saldoFinal;
+                                                ?>
+
+                                                <tr class="text-end align-middle">
+                                                    <td scope="row" class="text-start"><?= htmlspecialchars($acao) ?></td>
+                                                    <td><?= number_format($saldo, 2, ",", ".") ?></td>
+                                                    <td><?= number_format($repasse, 2, ",", ".") ?></td>
+                                                    <td><?= number_format($rp, 2, ",", ".") ?></td>
+                                                    <td><?= number_format($rent, 2, ",", ".") ?></td>
+                                                    <td><?= number_format($devolucao, 2, ",", ".") ?></td>                                                    
+                                                    <td><?= number_format($receita, 2, ",", ".") ?></td>                                                    
+                                                    <td><?= number_format($despesa, 2, ",", ".") ?></td>                                                                                  
+                                                    <td><?= number_format($glosas, 2, ",", ".") ?></td>                                                    
+                                                    <td><?= number_format($saldoFinal, 2, ",", ".") ?></td>
+                                                    <td class="text-center">
+                                                        <a href="?editSaldo=true&idSaldo=<?= $idSaldoC ?>" title="Editar Saldo">
+                                                            <img src="img/icons/currency-dollar.svg" alt="Editar Saldo" title="Editar Saldo" />
+                                                        </a>
+                                                    </td>                                                
+                                                </tr>
+                                                <?php
                                             endforeach;
-                                        }
+                                        endif;                                        
                                         ?>
 
                                         <tr class="table-group-divider text-end align-middle table-light">
@@ -720,8 +707,7 @@ unset($_SESSION['aba_ativa']);
                                         $saldoFinalK = 0;
                                         $glosasK = 0;
                                         $procK = $saldoModel->findSaldoByProcCat($idProc, $cat);
-                                        if ($procK) 
-                                        {
+                                        if ($procK):
                                             foreach ($procK as $proc):
                                                 $repasse = 0;
                                                 $despesa = 0;
@@ -733,56 +719,56 @@ unset($_SESSION['aba_ativa']);
                                                 $devolucao = $proc->devlCY;
                                                 $acaoId = $proc->acao_id;
                                                 
-                                                $acao = $programaModel->findById($acaoId)->acao;                                          
-
-                                                echo '<tr class="text-end align-middle">';
-                                                echo '<td scope="row" class="text-start">' . $acao . '</td>';
-                                                echo '<td>' . number_format($saldo, 2, ",", ".") . '</td>';
+                                                $acao = $programaModel->findById($acaoId)->acao;
+                                                
                                                 $value = $repasseModel->somaRepasseKByProcAcao($idProc, $acaoId);                                                    
-                                                if (!empty($value)) {
-                                                    $repasse = $value;
-                                                }                                            
-                                                if ($repasse == null) {
-                                                    $repasse = 0;
-                                                }                                                    
-                                                echo '<td>' . number_format($repasse, 2, ",", ".") . '</td>';
-                                                echo '<td>' . number_format($rp, 2, ",", ".") . '</td>';
-                                                echo '<td>' . number_format($rent, 2, ",", ".") . '</td>';
-                                                echo '<td>' . number_format($devolucao, 2, ",", ".") . '</td>';
+                                                if (!empty($value)) $repasse = $value;                                                                        
+
                                                 $receita = $saldo + $repasse + $rp + $rent - $devolucao;
-                                                echo '<td>' . number_format($receita, 2, ",", ".") . '</td>';
-                                                    $value = $despesaModel->somaByCatAcaoProc($idProc, $acaoId, $cat);
-                                                if (!empty($value)) {                                                        
-                                                    $despesa = $value;
-                                                }                                                    
-                                                if ($despesa == null) {
-                                                    $despesa = 0;
-                                                }
-                                                echo '<td>' . number_format($despesa, 2, ",", ".") . '</td>';
+
+                                                $valueD = $despesaModel->somaByCatAcaoProc($idProc, $acaoId, $cat);
+                                                if (!empty($valueD)) $despesa = $valueD;
+                                                
                                                 $valueG = $despesaModel->somaGlosaByAcaoProc($idProc, $acaoId, $cat);
-                                                if (!empty($valueG)) {                                                        
-                                                    $glosas = $valueG;
-                                                }                                                    
-                                                if ($glosas == null) {
-                                                    $glosas = 0;
-                                                } 
-                                                echo '<td>' . number_format($glosas, 2, ",", ".") . '</td>';
+                                                if (!empty($valueG)) $glosas = $valueG;
+                                                
                                                 $saldoFinal = $receita - $despesa + $glosas;
-                                                echo '<td>' . number_format($saldoFinal, 2, ",", ".") . '</td>';
-                                                echo '<td class="text-center"><a href="?editSaldo=true&idSaldo=' . $idSaldoK . '"><img src="img/icons/currency-dollar.svg" alt="Editar Saldo" title="Editar Saldo" /></a></td>';
+
                                                 $currentSaldo = array('id' => $idSaldoK, 'saldo' => $saldoFinal);
                                                 array_push($arrSaldoF, $currentSaldo);
-                                                $saldoK = $saldoK + $saldo;
-                                                $repasseK = $repasseK + $repasse;
-                                                $rpK = $rpK + $rp;
-                                                $rentK = $rentK + $rent;
-                                                $devolucaoK = $devolucaoK + $devolucao;
-                                                $receitaK = $receitaK + $receita;
-                                                $despesaK = $despesaK + $despesa;
-                                                $glosasK = $glosasK + $glosas;
-                                                $saldoFinalK = $saldoFinalK + $saldoFinal;
+                                                
+                                                // Somatórios do rodapé
+                                                $saldoK += $saldo;
+                                                $repasseK += $repasse;
+                                                $rpK += $rp;
+                                                $rentK += $rent;
+                                                $devolucaoK += $devolucao;
+                                                $receitaK += $receita;
+                                                $despesaK += $despesa;
+                                                $glosasK += $glosas;
+                                                $saldoFinalK += $saldoFinal;
+                                                ?>
+
+                                                <tr class="text-end align-middle">
+                                                    <td scope="row" class="text-start"><?= htmlspecialchars($acao) ?></td>
+                                                    <td><?= number_format($saldo, 2, ",", ".") ?></td>                                                                           
+                                                    <td><?= number_format($repasse, 2, ",", ".") ?></td>
+                                                    <td><?= number_format($rp, 2, ",", ".") ?></td>
+                                                    <td><?= number_format($rent, 2, ",", ".") ?></td>
+                                                    <td><?= number_format($devolucao, 2, ",", ".") ?></td>                                                
+                                                    <td><?= number_format($receita, 2, ",", ".") ?></td>                                                    
+                                                    <td><?= number_format($despesa, 2, ",", ".") ?></td>                                                
+                                                    <td><?= number_format($glosas, 2, ",", ".") ?></td>                                                
+                                                    <td><?= number_format($saldoFinal, 2, ",", ".") ?></td>
+                                                    <td class="text-center">
+                                                        <a href="?editSaldo=true&idSaldo=<?= $idSaldoK ?>" title="Editar Saldo">
+                                                            <img src="img/icons/currency-dollar.svg" alt="Editar Saldo" title="Editar Saldo" />
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                                <?php 
                                             endforeach;
-                                        }
+                                        endif;                                    
                                         ?>
                                         <tr class="table-group-divider text-end align-middle table-light">
                                             <th scope="row" class="text-start">Total Capital</th>
@@ -882,16 +868,19 @@ unset($_SESSION['aba_ativa']);
                                                 $dataRepasse = new DateTime($repData, $timezone);
                                                 $dataRepasse = $dataRepasse->format('d/m/Y');
                                                 $repProg = $programaModel->findById($acaoId)->programa;
-                                                echo '<tr>';
-                                                echo '<td>' . $repProg . ' - ' . $destinacao . '</td>';
-                                                echo '<td class="text-center">R$ ' . number_format($repC, 2, ",") . '</td>';
-                                                echo '<td class="text-center">R$ ' . number_format($repK, 2, ",") . '</td>';
-                                                echo '<td class="text-center">R$ ' . number_format($repTotal, 2, ",") . '</td>';
-                                                echo '<td class="text-center">' . $dataRepasse . '</td>';
-                                                echo '</tr>';
-
                                                 $repCTotal = $repCTotal + $repC;
                                                 $repKTotal = $repKTotal + $repK;
+                                                ?>
+
+                                                <tr>
+                                                    <td><?= htmlspecialchars($repProg) ?> - <?= htmlspecialchars($destinacao) ?></td>
+                                                    <td class="text-center">R$ <?=  number_format($repC, 2, ",", ".") ?></td>
+                                                    <td class="text-center">R$ <?=  number_format($repK, 2, ",", ".") ?></td>
+                                                    <td class="text-center">R$ <?=  number_format($repTotal, 2, ",", ".") ?></td>
+                                                    <td class="text-center"><?= $dataRepasse ?></td>
+                                                </tr>
+                                                <?php
+                                                
                                             endforeach;
                                             $repCKTotal = $repCTotal + $repKTotal;
                                             ?>
@@ -899,9 +888,9 @@ unset($_SESSION['aba_ativa']);
                                         <tfoot>
                                             <tr>
                                                 <th>Total</th>
-                                                <th class="text-center"><?= 'R$ ' . number_format($repCTotal, 2, ",") ?></th>
-                                                <th class="text-center"><?= 'R$ ' . number_format($repKTotal, 2, ",") ?></th>
-                                                <th class="text-center"><?= 'R$ ' . number_format($repCKTotal, 2, ",") ?></th>
+                                                <th class="text-center">R$ <?= number_format($repCTotal, 2, ",") ?></th>
+                                                <th class="text-center">R$ <?= number_format($repKTotal, 2, ",") ?></th>
+                                                <th class="text-center">R$ <?= number_format($repCKTotal, 2, ",") ?></th>
                                                 <th></th>
                                             </tr>
                                         </tfoot>
@@ -981,64 +970,70 @@ unset($_SESSION['aba_ativa']);
 
                                         $totalSI = $ccSI + $pp01SI + $pp51SI + $spublSI + $bbrfSI;                                        
                                         $totalSF = $ccSF + $pp01SF + $pp51SF + $spublSF + $bbrfSF;
-                                        
-                                        echo '<div class="col">';
-                                        echo '<div style="max-width: 576px" class="table-responsive-sm">';
-                                        echo '<table class="table table-sm table-hover m-auto">';
-                                        echo '<tbody>';
-                                        echo '<tr>';
-                                        echo '<td>Banco</td>';
-                                        echo '<td colspan="2">' . $banco . '</td>';
-                                        echo '</tr>';
-                                        echo '<tr>';
-                                        echo '<td>Agência</td>';
-                                        echo '<td colspan="2">' . $agencia . '</td>';
-                                        echo '</tr>';
-                                        echo '<tr>';
-                                        echo '<td>Conta</td>';
-                                        echo '<td colspan="2">' . $conta . '</td>';
-                                        echo '</tr>';
-                                        echo '<tr class="align-middle">';
-                                        echo '<td class="text-center"><a href="?editBanco=true&idConta=' . $idConta . '"><img src="img/icons/currency-dollar.svg" alt="Editar Saldo" title="Editar Saldo Bancário" /></a></td>';
-                                        echo '<th>Saldo Inicial</th>';
-                                        echo '<th>Saldo Final</th>';
-                                        echo '</tr>';
-                                        echo '<tr>';
-                                        echo '<td>Conta Corrente</td>';
-                                        echo '<td>R$ ' . number_format($ccSI, 2, ",", ".") . '</td>';
-                                        echo '<td>R$ ' . number_format($ccSF, 2, ",", ".") . '</td>';
-                                        echo '</tr>';
-                                        echo '<tr>';
-                                        echo '<td>Poupança 01</td>';
-                                        echo '<td>R$ ' . number_format($pp01SI, 2, ",", ".") . '</td>';
-                                        echo '<td>R$ ' . number_format($pp01SF, 2, ",", ".") . '</td>';
-                                        echo '</tr>';
-                                        echo '<tr>';
-                                        echo '<td>Poupança 51</td>';
-                                        echo '<td>R$ ' . number_format($pp51SI, 2, ",", ".") . '</td>';
-                                        echo '<td>R$ ' . number_format($pp51SF, 2, ",", ".") . '</td>';
-                                        echo '</tr>';
-                                        echo '<tr>';
-                                        echo '<td>S. Público Aut.</td>';
-                                        echo '<td>R$ ' . number_format($spublSI, 2, ",", ".") . '</td>';
-                                        echo '<td>R$ ' . number_format($spublSF, 2, ",", ".") . '</td>';
-                                        echo '</tr>';
-                                        echo '<tr>';
-                                        echo '<td>BB RF CP Aut.</td>';
-                                        echo '<td>R$ ' . number_format($bbrfSI, 2, ",", ".") . '</td>';
-                                        echo '<td>R$ ' . number_format($bbrfSF, 2, ",", ".") . '</td>';
-                                        echo '</tr>';
-                                        echo '</tbody>';
-                                        echo '<tfoot>';
-                                        echo '<tr>';
-                                        echo '<th>Total</th>';
-                                        echo '<th>R$ ' . number_format($totalSI, 2, ",", ".") . '</th>';
-                                        echo '<th>R$ ' . number_format($totalSF, 2, ",", ".") . '</th>';
-                                        echo '</tr>';
-                                        echo '</tfoot>';
-                                        echo '</table>';
-                                        echo '</div>';
-                                        echo '</div>';
+                                        ?>
+
+                                        <div class="col">
+                                            <div style="max-width: 576px" class="table-responsive-sm">
+                                                <table class="table table-sm table-hover m-auto">
+                                                    <tbody>
+                                                        <tr>
+                                                            <td>Banco</td>
+                                                            <td colspan="2"><?= htmlspecialchars($banco) ?></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Agência</td>
+                                                            <td colspan="2"><?= htmlspecialchars($agencia) ?></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Conta</td>
+                                                            <td colspan="2"><?= htmlspecialchars($conta) ?></td>
+                                                        </tr>
+                                                        <tr class="align-middle">
+                                                            <td class="text-center">
+                                                                <a href="?editBanco=true&idConta=<?= $idConta ?>">
+                                                                    <img src="img/icons/currency-dollar.svg" alt="Editar Saldo" title="Editar Saldo Bancário" />
+                                                                </a>
+                                                            </td>
+                                                            <th>Saldo Inicial</th>
+                                                            <th>Saldo Final</th>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Conta Corrente</td>
+                                                            <td>R$ <?= number_format($ccSI, 2, ",", ".")  ?></td>
+                                                            <td>R$ <?= number_format($ccSF, 2, ",", ".")  ?></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Poupança 01</td>
+                                                            <td>R$ <?= number_format($pp01SI, 2, ",", ".")  ?></td>
+                                                            <td>R$ <?= number_format($pp01SF, 2, ",", ".")  ?></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Poupança 51</td>
+                                                            <td>R$ <?= number_format($pp51SI, 2, ",", ".")  ?></td>
+                                                            <td>R$ <?= number_format($pp51SF, 2, ",", ".")  ?></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>S. Público Aut.</td>
+                                                            <td>R$ <?= number_format($spublSI, 2, ",", ".")  ?></td>
+                                                            <td>R$ <?= number_format($spublSF, 2, ",", ".")  ?></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>BB RF CP Aut.</td>
+                                                            <td>R$ <?= number_format($bbrfSI, 2, ",", ".")  ?></td>
+                                                            <td>R$ <?= number_format($bbrfSF, 2, ",", ".")  ?></td>
+                                                        </tr>
+                                                    </tbody>
+                                                    <tfoot>
+                                                        <tr>
+                                                            <th>Total</th>
+                                                            <th>R$ <?= number_format($totalSI, 2, ",", ".")  ?></th>
+                                                            <th>R$ <?= number_format($totalSF, 2, ",", ".")  ?></th>
+                                                        </tr>
+                                                    </tfoot>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <?php
                                     endforeach;
                                 }
                                 ?>
@@ -1071,11 +1066,12 @@ unset($_SESSION['aba_ativa']);
                                         <span class="input-group-text col-3" id="inputGroup-conc">Rentabilidade Lançada</span>
                                         <?php                                        
                                         $tRent = $rentabilidadeModel->somaRendimentosCY($idProc) ?? 0.0;
-                                        if ($tRent == 0 || $tRent != $rentT) {
-                                            $backErro = "#F8D7DA";
-                                        } else {
+                                        if (number_format($tRent, 2, ",", ".") == number_format($rentT, 2, ",", ".")) {
                                             $backErro = "#D1E7DD";
                                         }
+                                        elseif ($tRent == 0 || $tRent != $rentT) {
+                                            $backErro = "#F8D7DA";
+                                        } 
                                         ?>
                                         <input type="text" name="rentLanc" value="R$ <?= number_format($tRent, 2, ",", "."); ?>" class="w-50 col-9 form-control" style="background-color: <?= $backErro ?>" aria-describedby="inputGroup-conc" readonly />
                                     </div>
@@ -1121,8 +1117,8 @@ unset($_SESSION['aba_ativa']);
                                         $totalRentabilidade = 0;
                                         $rTotal = 0;                                        
                                         
-                                        if ($rentabilidades = $rentabilidadeModel->findByProcId($idProc)) {
-                                            foreach ($rentabilidades as $rent) {
+                                        if ($rentabilidades = $rentabilidadeModel->findByProcId($idProc)):
+                                            foreach ($rentabilidades as $rent):
                                                 $idRent = $rent->id;
                                                 $idConta = $rent->conta_id;
                                                 $variacao = $rent->variacao;
@@ -1145,28 +1141,33 @@ unset($_SESSION['aba_ativa']);
                                                     $agencia = $banco->agencia;
                                                     $conta = $banco->conta;
                                                 }
+                                                ?>
                                                 
-                                                echo '<tr class="fw-lighter align-middle">';
-                                                echo '<td class="">' . $agencia . ' / ' . $conta . '</td>';
-                                                echo '<td scope="row" class="">' . $variacao . '</td>';
-                                                echo '<td class="">R$ ' . number_format($rJan, 2, ",", ".") . '</td>';
-                                                echo '<td class="">R$ ' . number_format($rFev, 2, ",", ".") . '</td>';
-                                                echo '<td class="">R$ ' . number_format($rMar, 2, ",", ".") . '</td>';
-                                                echo '<td class="">R$ ' . number_format($rAbr, 2, ",", ".") . '</td>';
-                                                echo '<td class="">R$ ' . number_format($rMai, 2, ",", ".") . '</td>';
-                                                echo '<td class="">R$ ' . number_format($rJun, 2, ",", ".") . '</td>';
-                                                echo '<td class="">R$ ' . number_format($rJul, 2, ",", ".") . '</td>';
-                                                echo '<td class="">R$ ' . number_format($rAgo, 2, ",", ".") . '</td>';
-                                                echo '<td class="">R$ ' . number_format($rSet, 2, ",", ".") . '</td>';
-                                                echo '<td class="">R$ ' . number_format($rOut, 2, ",", ".") . '</td>';
-                                                echo '<td class="">R$ ' . number_format($rNov, 2, ",", ".") . '</td>';
-                                                echo '<td class="">R$ ' . number_format($rDez, 2, ",", ".") . '</td>';
-                                                echo '<td class=""><b>R$ ' . number_format($rTotal, 2, ",", ".") . '</b></td>';
-                                                echo '<td class="text-center">';
-                                                echo '<a href="?editRent=true&idRent=' . $idRent . '"><img src="img/icons/currency-dollar.svg" alt="Editar" title="Editar" /></a><br />';
-                                                echo '</td>';
-                                                echo '</tr>';
+                                                <tr class="fw-lighter align-middle">
+                                                    <td class=""><?=  htmlspecialchars($agencia) ?>  / <?= htmlspecialchars($conta) ?></td>
+                                                    <td scope="row" class=""><?=  htmlspecialchars($variacao) ?></td>
+                                                    <td class="">R$ <?= number_format($rJan, 2, ",", ".")  ?></td>
+                                                    <td class="">R$ <?= number_format($rFev, 2, ",", ".")  ?></td>
+                                                    <td class="">R$ <?= number_format($rMar, 2, ",", ".")  ?></td>
+                                                    <td class="">R$ <?= number_format($rAbr, 2, ",", ".")  ?></td>
+                                                    <td class="">R$ <?= number_format($rMai, 2, ",", ".")  ?></td>
+                                                    <td class="">R$ <?= number_format($rJun, 2, ",", ".")  ?></td>
+                                                    <td class="">R$ <?= number_format($rJul, 2, ",", ".")  ?></td>
+                                                    <td class="">R$ <?= number_format($rAgo, 2, ",", ".")  ?></td>
+                                                    <td class="">R$ <?= number_format($rSet, 2, ",", ".")  ?></td>
+                                                    <td class="">R$ <?= number_format($rOut, 2, ",", ".")  ?></td>
+                                                    <td class="">R$ <?= number_format($rNov, 2, ",", ".")  ?></td>
+                                                    <td class="">R$ <?= number_format($rDez, 2, ",", ".")  ?></td>
+                                                    <td class=""><b>R$ <?= number_format($rTotal, 2, ",", ".")  ?></b></td>
+                                                    <td class="text-center">
+                                                        <a href="?editRent=true&idRent=<?=  $idRent ?>">
+                                                            <img src="img/icons/currency-dollar.svg" alt="Editar" title="Editar" />
+                                                        </a>
+                                                        <br />
+                                                    </td>
+                                                </tr>
 
+                                                <?php
                                                 $totalJan = $totalJan + $rJan;
                                                 $totalFev = $totalFev + $rFev;
                                                 $totalMar = $totalMar + $rMar;
@@ -1180,33 +1181,33 @@ unset($_SESSION['aba_ativa']);
                                                 $totalNov = $totalNov + $rNov;
                                                 $totalDez = $totalDez + $rDez;
                                                 $totalRentabilidade = $totalJan + $totalFev + $totalMar + $totalAbr + $totalMai + $totalJun + $totalJul + $totalAgo + $totalSet + $totalOut + $totalNov + $totalDez;
-                                            }
-                                        }
+                                            endforeach;
+                                        endif;
                                         ?>
                                     </tbody>
                                     <tfoot class="table-group-divider">
                                         <?php
-                                        if ($totalRentabilidade > 0.1) {
+                                        if ($totalRentabilidade > 0.1):
                                         ?>
                                             <tr>
                                                 <th scope="row" colspan="2">Total</th>
-                                                <th class="text-center"><?php echo 'R$ ' . number_format($totalJan, 2, ",", "."); ?></th>
-                                                <th class="text-center"><?php echo 'R$ ' . number_format($totalFev, 2, ",", "."); ?></th>
-                                                <th class="text-center"><?php echo 'R$ ' . number_format($totalMar, 2, ",", "."); ?></th>
-                                                <th class="text-center"><?php echo 'R$ ' . number_format($totalAbr, 2, ",", "."); ?></th>
-                                                <th class="text-center"><?php echo 'R$ ' . number_format($totalMai, 2, ",", "."); ?></th>
-                                                <th class="text-center"><?php echo 'R$ ' . number_format($totalJun, 2, ",", "."); ?></th>
-                                                <th class="text-center"><?php echo 'R$ ' . number_format($totalJul, 2, ",", "."); ?></th>
-                                                <th class="text-center"><?php echo 'R$ ' . number_format($totalAgo, 2, ",", "."); ?></th>
-                                                <th class="text-center"><?php echo 'R$ ' . number_format($totalSet, 2, ",", "."); ?></th>
-                                                <th class="text-center"><?php echo 'R$ ' . number_format($totalOut, 2, ",", "."); ?></th>
-                                                <th class="text-center"><?php echo 'R$ ' . number_format($totalNov, 2, ",", "."); ?></th>
-                                                <th class="text-center"><?php echo 'R$ ' . number_format($totalDez, 2, ",", "."); ?></th>
-                                                <th class="text-center"><?php echo 'R$ ' . number_format($totalRentabilidade, 2, ",", "."); ?></th>
+                                                <th class="text-center">R$ <?= number_format($totalJan, 2, ",", "."); ?></th>
+                                                <th class="text-center">R$ <?= number_format($totalFev, 2, ",", "."); ?></th>
+                                                <th class="text-center">R$ <?= number_format($totalMar, 2, ",", "."); ?></th>
+                                                <th class="text-center">R$ <?= number_format($totalAbr, 2, ",", "."); ?></th>
+                                                <th class="text-center">R$ <?= number_format($totalMai, 2, ",", "."); ?></th>
+                                                <th class="text-center">R$ <?= number_format($totalJun, 2, ",", "."); ?></th>
+                                                <th class="text-center">R$ <?= number_format($totalJul, 2, ",", "."); ?></th>
+                                                <th class="text-center">R$ <?= number_format($totalAgo, 2, ",", "."); ?></th>
+                                                <th class="text-center">R$ <?= number_format($totalSet, 2, ",", "."); ?></th>
+                                                <th class="text-center">R$ <?= number_format($totalOut, 2, ",", "."); ?></th>
+                                                <th class="text-center">R$ <?= number_format($totalNov, 2, ",", "."); ?></th>
+                                                <th class="text-center">R$ <?= number_format($totalDez, 2, ",", "."); ?></th>
+                                                <th class="text-center">R$ <?= number_format($totalRentabilidade, 2, ",", "."); ?></th>
                                                 <th></th>
                                             </tr>
-                                        <?php
-                                        }
+                                        <?php 
+                                        endif;
                                         ?>
                                     </tfoot>
                                 </table>
@@ -1254,9 +1255,7 @@ unset($_SESSION['aba_ativa']);
                                             <th class="col w-auto fw-semibold">Data Pagamento</th>
                                             <th class="col w-auto fw-semibold">Valor Pago</th>
                                             <th class="col w-auto fw-semibold">Valor da Glosa</th>
-                                            <th class="col w-auto fw-semibold">Editar</th>
-
-                                            
+                                            <th class="col w-auto fw-semibold">Editar</th>                                            
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1267,8 +1266,7 @@ unset($_SESSION['aba_ativa']);
                                         $totalGl = 0;
                                         $despesasPendentes = 0;
                                         $desps = $despesaModel->findByProcId($idProc);                                        
-                                        if ($desps) 
-                                        {
+                                        if ($desps):                                        
                                             foreach ($desps as $desp):                                                
                                                 $idDesp = $desp->id;
                                                 $idAcao = $desp->acao_id;
@@ -1282,17 +1280,15 @@ unset($_SESSION['aba_ativa']);
                                                 $valorGl = $desp->valor_gl;
                                                 $motivoGl = $desp->motivo_gl;
 
-                                                if ($categoria == "C") {
+                                                if ($categoria == "C") 
+                                                { 
                                                     $categoria = "Custeio";
                                                 } else if ($categoria == "K") {
                                                     $categoria = "Capital";
                                                 }
 
                                                 $prog = $programaModel->findById($idAcao);                                                
-                                                if ($prog) 
-                                                {                                                    
-                                                    $acaoDesp = $prog->acao;
-                                                }
+                                                if ($prog) $acaoDesp = $prog->acao; 
 
                                                 $data = new DateTime($dataDesp, $timezone);
                                                 $dataDesp = $data->format('d/m/Y');
@@ -1329,36 +1325,43 @@ unset($_SESSION['aba_ativa']);
                                                 }
 
                                                 $nItem = $nItem + 1;
-                                                echo '<tr class="fw-lighter align-middle ' . $backPendente . '">';
-                                                echo '<td scope="row" class="text-center">' . $nItem . '</td>';
-                                                echo '<td class="text-center">' . $numPgto . '</td>';
-                                                echo '<td class="">' . $acaoDesp . ' - ' . $categoria . '</td>';
-                                                echo '<td class="text-center">' . $numDoc . '</td>';
-                                                echo '<td class="text-center">' . $dataDesp . '</td>';
-                                                echo '<td class="text-center">' . 'R$ ' . number_format($valor, 2, ",", ".") . '</td>';
-                                                echo '<td class="text-center">' . $dataPg . '</td>';
-                                                echo '<td class="text-center">' . 'R$ ' . number_format($valorPg, 2, ",", ".") . '</td>';
-                                                echo '<td class="text-center">' . 'R$ ' . number_format($valorGl, 2, ",", ".") . '</td>';
-                                                echo '<td class="text-center">';                                                
-                                                echo '<a href="?editDesp=true&idDesp=' . $idDesp . '"><img src="img/icons/currency-dollar.svg" alt="Editar" title="Editar" /></a>&nbsp;&nbsp;';
-                                                echo '<a href="?glosarDesp=true&idDesp=' . $idDesp . '"><img src="img/na.svg" alt="Glosar" title="Glosar" /></a><br />';                                                
-                                                echo '</td>';
-                                                echo '</tr>';
+                                                ?>
+                                                <tr class="fw-lighter align-middle <?= htmlspecialchars($backPendente) ?>">
+                                                    <td scope="row" class="text-center"><?= $nItem ?></td>
+                                                    <td class="text-center"><?= $numPgto ?></td>
+                                                    <td class=""><?= htmlspecialchars($acaoDesp) ?> - <?= $categoria ?></td>
+                                                    <td class="text-center"><?= $numDoc ?></td>
+                                                    <td class="text-center"><?= $dataDesp ?></td>
+                                                    <td class="text-center">R$ <?= number_format($valor, 2, ",", ".") ?></td>
+                                                    <td class="text-center"><?= $dataPg ?></td>
+                                                    <td class="text-center">R$ <?= number_format($valorPg, 2, ",", ".") ?></td>
+                                                    <td class="text-center">R$ <?= number_format($valorGl, 2, ",", ".") ?></td>
+                                                    <td class="text-center">                                                
+                                                        <a href="?editDesp=true&idDesp=<?= $idDesp ?>">
+                                                            <img src="img/icons/currency-dollar.svg" alt="Editar" title="Editar" />
+                                                        </a>&nbsp;&nbsp;
+                                                    <a href="?glosarDesp=true&idDesp=<?= $idDesp ?>">
+                                                        <img src="img/na.svg" alt="Glosar" title="Glosar" />
+                                                    </a>
+                                                    <br />                                                
+                                                    </td>
+                                                </tr>
+                                                <?php
 
                                                 $total = $total + $valor;
                                                 $totalPg = $totalPg + $valorPg;
                                                 $totalGl = $totalGl + $valorGl;
                                             endforeach;
-                                        }
+                                        endif;
                                         ?>
                                     </tbody>
                                     <tfoot class="table-group-divider">
                                         <tr>
                                             <th scope="row" colspan="5" class="text-center">Total</th>
-                                            <th class="text-center"><?php echo 'R$ ' . number_format($total, 2, ",", "."); ?></th>
+                                            <th class="text-center">R$ <?=number_format($total, 2, ",", "."); ?></th>
                                             <th scope="row"></th>
-                                            <th class="text-center"><?php echo 'R$ ' . number_format($totalPg, 2, ",", "."); ?></th>
-                                            <th class="text-center"><?php echo 'R$ ' . number_format($totalGl, 2, ",", "."); ?></th>
+                                            <th class="text-center">R$ <?=number_format($totalPg, 2, ",", "."); ?></th>
+                                            <th class="text-center">R$ <?=number_format($totalGl, 2, ",", "."); ?></th>
                                             <th></th>
                                         </tr>
                                     </tfoot>
@@ -1367,141 +1370,142 @@ unset($_SESSION['aba_ativa']);
                             <br />
                         </div>
                     </div>
-                </div>                
+                                
 
-                <!-- CONCILIAÇÃO OCORRÊNCIAS -->
-                <div class="tab-pane fade <?= $abaAtiva == 'ocorrencias' ? 'show active' : '' ?>" id="nav-ocorrencias" role="tabpanel" aria-labelledby="nav-ocorrencias-tab" tabindex="0">
-                    <div class="container-fluid">
-                        <br />
-                        <div class="row">
-                            <h6 class="text-center">CONCILIAÇÃO</h6>
-                            <div class="col">
-                                <div class="input-group input-group-sm mb-2">
-                                    <span class="input-group-text col-3" id="inputGroup-conc">Saldo Contábil</span>
-                                    <input type="text" name="despConc" value="R$ <?= number_format($saldoFinalT, 2, ",", "."); ?>" class="w-50 col-9 form-control" aria-describedby="inputGroup-conc" readonly />
+                    <!-- CONCILIAÇÃO OCORRÊNCIAS -->
+                    <div class="tab-pane fade <?= $abaAtiva == 'ocorrencias' ? 'show active' : '' ?>" id="nav-ocorrencias" role="tabpanel" aria-labelledby="nav-ocorrencias-tab" tabindex="0">
+                        <div class="container-fluid">
+                            <br />
+                            <div class="row">
+                                <h6 class="text-center">CONCILIAÇÃO</h6>
+                                <div class="col">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <span class="input-group-text col-3" id="inputGroup-conc">Saldo Contábil</span>
+                                        <input type="text" name="despConc" value="R$ <?= number_format($saldoFinalT, 2, ",", "."); ?>" class="w-50 col-9 form-control" aria-describedby="inputGroup-conc" readonly />
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col">
-                                <div class="input-group input-group-sm mb-2">
-                                    <span class="input-group-text col-3" id="inputGroup-banco">Saldo Bancário</span>
-                                    <?php
-                                    $sdConcOc = $conciliacaoModel->getSaldoConciliacao($idProc);
-                                    
-                                    if (round($saldoFinalT, 2) == round(($bancoFinal + $sdConcOc), 2)) {
-                                        $backErro = "#D1E7DD";
-                                    } else {
-                                        $backErro = "#F8D7DA";
-                                    }
-                                    ?>
-                                    <input type="text" name="totalBanco" value="R$ <?= number_format($bancoFinal, 2, ",", ".") ?>" class="col-9 form-control" style="background-color: <?= $backErro ?>" aria-describedby="inputGroup-banco" readonly />
-                                </div>
-                            </div>
-                        </div>
-                        <br>
-                        <div class="row my-auto">
-                            <button type="button" class="col-2 btn btn-primary mx-2" data-bs-toggle="modal" data-bs-target="#ocorrenciaModal">Nova Ocorrência</button>
-                            <div class="col-6 text-center mx-2 fw-semibold">Demonstração Contábil / Financeira</div>
-                        </div>
-                        <hr />
-                        <div class="row">
-                            <div class="col">
-                                <table class="table table-sm table-striped table-hover m-auto">
-                                    <thead>
-                                        <tr class="text-center align-middle">
-                                            <th colspan="3" class="col w-auto fw-semibold">Débitos não Demonstrados no Extrato</th>
-                                        </tr>
-                                        <tr class="text-center align-middle">
-                                            <th class="col-8 fw-semibold" width="40%">Histórico</th>
-                                            <th class="col-3 fw-semibold" width="10%">Valor (R$)</th>
-                                            <th class="col-1 fw-semibold">Ação</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($dadosConciliacao['debitos'] as $occD): ?>                                        
-                                            <tr class="align-middle">
-                                                <td><?= htmlspecialchars($occD->ocorrencia) ?> - <?= htmlspecialchars($occD->descricao) ?> - <?= htmlspecialchars($occD->dataOccFormatada) ?></td>
-                                                <td class="text-center">R$ <?= number_format($occD->valorOcc, 2, ",", ".") ?></td>
-                                                <td class="text-center">
-                                                    <a href="?delOcc=true&idOcc=<?= $occD->id ?>"><img src="img/na.svg" alt="Deletar" title="Deletar"/></a>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                    <tfoot>
-                                        <tr class="text-center align-middle">
-                                            <th>Total</th>
-                                            <th>R$ <?= number_format($dadosConciliacao['totalD'], 2, ",", ".") ?></th>
-                                            <th></th>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                            <div class="col">
-                                <table class="table table-sm table-striped table-hover m-auto">
-                                    <thead>
-                                        <tr class="text-center align-middle">
-                                            <th colspan="3" class="col w-auto fw-semibold">Créditos não Demonstrados no Extrato</th>
-                                        </tr>                                        
-                                        <tr class="text-center align-middle">
-                                            <th class="col-8 fw-semibold" width="40%">Histórico</th>
-                                            <th class="col-3 fw-semibold" width="10%">Valor (R$)</th>
-                                            <th class="col-1 fw-semibold">Ação</th>
-                                        </tr>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($dadosConciliacao['creditos'] as $occC): ?>
-                                            <tr class="align-middle">
-                                                <td><?= htmlspecialchars($occC->ocorrencia) ?> - <?= htmlspecialchars($occC->descricao) ?> - <?= $occC->dataOccFormatada ?></td>
-                                                <td class="text-center">R$ <?= number_format($occC->valorOcc, 2, ",", ".") ?></td>
-                                                <td class="text-center">
-                                                    <a href="?delOcc=true&idOcc=<?= $occC->id ?>"><img src="img/na.svg" alt="Deletar" title="Deletar"/></a>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                    <tfoot>
-                                        <tr class="text-center align-middle">
-                                            <th>Total</th>
-                                            <th>R$ <?= number_format($dadosConciliacao['totalC'], 2, ",", ".") ?></th>
-                                            <th></th>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </div>
-                        <br>
-                        <div class="row mt-4">
-                            <div class="col">
-                                <table class="table table-sm table-bordered m-auto" style="max-width: 600px;">
-                                    <tbody>
+                                <div class="col">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <span class="input-group-text col-3" id="inputGroup-banco">Saldo Bancário</span>
                                         <?php
-                                        // 1. Usando as variáveis corretas do array que criamos no Passo 1
-                                        $tOcorr = $dadosConciliacao['totalD'] - $dadosConciliacao['totalC'];
+                                        $sdConcOc = $conciliacaoModel->getSaldoConciliacao($idProc);
                                         
-                                        // 2. Definindo a mensagem e a cor (Bootstrap) dependendo do resultado
-                                        if ($tOcorr > 0.001) { // Maior que zero
-                                            $descConc = "Valor a Ressarcir";
-                                            $corTexto = "text-danger"; // Vermelho
-                                        } elseif ($tOcorr < -0.001) { // Menor que zero
-                                            $descConc = "Valor Pertencente à Entidade";
-                                            $corTexto = "text-success"; // Verde
+                                        if (round($saldoFinalT, 2) == round(($bancoFinal + $sdConcOc), 2)) {
+                                            $backErro = "#D1E7DD";
                                         } else {
-                                            $descConc = "Nenhum valor pendente";
-                                            $corTexto = "text-secondary"; // Cinza
+                                            $backErro = "#F8D7DA";
                                         }
                                         ?>
-                                        <tr class="text-center align-middle <?= $corTexto ?> fs-6">
-                                            <th class="w-50"><?= $descConc ?></th>
+                                        <input type="text" name="totalBanco" value="R$ <?= number_format($bancoFinal, 2, ",", ".") ?>" class="col-9 form-control" style="background-color: <?= $backErro ?>" aria-describedby="inputGroup-banco" readonly />
+                                    </div>
+                                </div>
+                            </div>
+                            <br>
+                            <div class="row my-auto">
+                                <button type="button" class="col-2 btn btn-primary mx-2" data-bs-toggle="modal" data-bs-target="#ocorrenciaModal">Nova Ocorrência</button>
+                                <div class="col-6 text-center mx-2 fw-semibold">Demonstração Contábil / Financeira</div>
+                            </div>
+                            <hr />
+                            <div class="row">
+                                <div class="col">
+                                    <table class="table table-sm table-striped table-hover m-auto">
+                                        <thead>
+                                            <tr class="text-center align-middle">
+                                                <th colspan="3" class="col w-auto fw-semibold">Débitos não Demonstrados no Extrato</th>
+                                            </tr>
+                                            <tr class="text-center align-middle">
+                                                <th class="col-8 fw-semibold" width="40%">Histórico</th>
+                                                <th class="col-3 fw-semibold" width="10%">Valor (R$)</th>
+                                                <th class="col-1 fw-semibold">Ação</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($dadosConciliacao['debitos'] as $occD): ?>                                        
+                                                <tr class="align-middle">
+                                                    <td><?= htmlspecialchars($occD->ocorrencia) ?> - <?= htmlspecialchars($occD->descricao) ?> - <?= htmlspecialchars($occD->dataOccFormatada) ?></td>
+                                                    <td class="text-center">R$ <?= number_format($occD->valorOcc, 2, ",", ".") ?></td>
+                                                    <td class="text-center">
+                                                        <a href="?delOcc=true&idOcc=<?= $occD->id ?>"><img src="img/na.svg" alt="Deletar" title="Deletar"/></a>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="text-center align-middle">
+                                                <th>Total</th>
+                                                <th>R$ <?= number_format($dadosConciliacao['totalD'], 2, ",", ".") ?></th>
+                                                <th></th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                                <div class="col">
+                                    <table class="table table-sm table-striped table-hover m-auto">
+                                        <thead>
+                                            <tr class="text-center align-middle">
+                                                <th colspan="3" class="col w-auto fw-semibold">Créditos não Demonstrados no Extrato</th>
+                                            </tr>                                        
+                                            <tr class="text-center align-middle">
+                                                <th class="col-8 fw-semibold" width="40%">Histórico</th>
+                                                <th class="col-3 fw-semibold" width="10%">Valor (R$)</th>
+                                                <th class="col-1 fw-semibold">Ação</th>
+                                            </tr>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($dadosConciliacao['creditos'] as $occC): ?>
+                                                <tr class="align-middle">
+                                                    <td><?= htmlspecialchars($occC->ocorrencia) ?> - <?= htmlspecialchars($occC->descricao) ?> - <?= $occC->dataOccFormatada ?></td>
+                                                    <td class="text-center">R$ <?= number_format($occC->valorOcc, 2, ",", ".") ?></td>
+                                                    <td class="text-center">
+                                                        <a href="?delOcc=true&idOcc=<?= $occC->id ?>"><img src="img/na.svg" alt="Deletar" title="Deletar"/></a>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="text-center align-middle">
+                                                <th>Total</th>
+                                                <th>R$ <?= number_format($dadosConciliacao['totalC'], 2, ",", ".") ?></th>
+                                                <th></th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                            <br>
+                            <div class="row mt-4">
+                                <div class="col">
+                                    <table class="table table-sm table-bordered m-auto" style="max-width: 600px;">
+                                        <tbody>
+                                            <?php
+                                            // 1. Usando as variáveis corretas do array que criamos no Passo 1
+                                            $tOcorr = $dadosConciliacao['totalD'] - $dadosConciliacao['totalC'];
                                             
-                                            <th class="w-50 fs-5">R$ <?= number_format(abs($tOcorr), 2, ",", ".") ?></th>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                                            // 2. Definindo a mensagem e a cor (Bootstrap) dependendo do resultado
+                                            if ($tOcorr > 0.001) { // Maior que zero
+                                                $descConc = "Valor a Ressarcir";
+                                                $corTexto = "text-danger"; // Vermelho
+                                            } elseif ($tOcorr < -0.001) { // Menor que zero
+                                                $descConc = "Valor Pertencente à Entidade";
+                                                $corTexto = "text-success"; // Verde
+                                            } else {
+                                                $descConc = "Nenhum valor pendente";
+                                                $corTexto = "text-secondary"; // Cinza
+                                            }
+                                            ?>
+                                            <tr class="text-center align-middle <?= $corTexto ?> fs-6">
+                                                <th class="w-50"><?= $descConc ?></th>
+                                                
+                                                <th class="w-50 fs-5">R$ <?= number_format(abs($tOcorr), 2, ",", ".") ?></th>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>                
+                    </div>                
+                </div>
             </div>
         </div>
 
@@ -1550,8 +1554,8 @@ unset($_SESSION['aba_ativa']);
                                 </div>
                                 <div class="row">
                                     <div class="input-group input-group-sm mb-2">
-                                        <label class="input-group-text col-4" for="inputGroup-saldoInicial">Saldo Inicial</label>
-                                        <input type="text" name="saldo24" value="" class="col-8 form-control" id="inputGroup-saldoInicial" />
+                                        <label class="input-group-text col-4" for="inputGroup-saldoInicial">Saldo Inicial (R$)</label>                                        
+                                        <input type="text" name="saldo24" value="" class="col-8 form-control mascara-moeda" placeholder="0,00" id="inputGroup-saldoInicial" />
                                     </div>
                                 </div>
                             </div>
@@ -1579,20 +1583,20 @@ unset($_SESSION['aba_ativa']);
                             <div class="content-fluid">
                                 <div class="row">
                                     <div class="input-group input-group-sm mb-2">
-                                        <label class="input-group-text col-4" for="inputGroup-pgto">Recursos Próprios</label>
-                                        <input type="text" name="rp25" value="<?= 'R$ ' . number_format($rpCYM, 2, ",", ".") ?>" class="col-8 form-control" id="inputGroup-pgto" />
+                                        <label class="input-group-text col-4" for="inputGroup-pgto">Recursos Próprios (R$)</label>
+                                        <input type="text" name="rp25" value="<?= number_format($rpCYM, 2, ",", ".") ?>" class="col-8 form-control mascara-moeda" placeholder="0,00" id="inputGroup-pgto" />
                                     </div>
                                 </div>
                                 <div class="row">
                                     <div class="input-group input-group-sm mb-2">
-                                        <label class="input-group-text col-4" for="inputGroup-pgto">Rentabilidade</label>
-                                        <input type="text" name="rent25" value="<?= 'R$ ' . number_format($rentCYM, 2, ",", ".") ?>" class="col-8 form-control" id="inputGroup-pgto" />
+                                        <label class="input-group-text col-4" for="inputGroup-pgto">Rentabilidade (R$)</label>
+                                        <input type="text" name="rent25" value="<?= number_format($rentCYM, 2, ",", ".") ?>" class="col-8 form-control mascara-moeda" placeholder="0,00" id="inputGroup-pgto" />
                                     </div>
                                 </div>
                                 <div class="row">
                                     <div class="input-group input-group-sm mb-2">
-                                        <label class="input-group-text col-4" for="inputGroup-pgto">Devolução ao FNDE</label>
-                                        <input type="text" name="devol25" value="<?= 'R$ ' . number_format($devolCYM, 2, ",", ".") ?>" class="col-8 form-control" id="inputGroup-pgto" />
+                                        <label class="input-group-text col-4" for="inputGroup-pgto">Devolução ao FNDE (R$)</label>
+                                        <input type="text" name="devol25" value="<?= number_format($devolCYM, 2, ",", ".") ?>" class="col-8 form-control mascara-moeda" placeholder="0,00" id="inputGroup-pgto" />
                                     </div>
                                 </div>
                             </div>
@@ -1637,33 +1641,33 @@ unset($_SESSION['aba_ativa']);
                                 <div class="row">
                                     <div class="col">
                                         <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-4" id="inputGroup-CC">Conta Corrente</span>
-                                            <input type="text" name="siCorrente" value="R$ 0,00" class="col-8 form-control" aria-describedby="inputGroup-CC" required />
+                                            <span class="input-group-text col-4" id="inputGroup-CC">Conta Corrente (R$)</span>
+                                            <input type="text" name="siCorrente" value="" class="col-8 form-control mascara-moeda" placeholder="0,00" aria-describedby="inputGroup-CC" required />
                                         </div>
                                     </div>
                                 </div>
                                 <div class="row">
                                     <div class="input-group input-group-sm mb-2">
-                                        <span class="input-group-text col-4" id="inputGroup-PP01">Poupança 01</span>
-                                        <input type="text" name="siPoup01" value="R$ 0,00" class="col-8 form-control" aria-describedby="inputGroup-PP01" required />
+                                        <span class="input-group-text col-4" id="inputGroup-PP01">Poupança 01 (R$)</span>
+                                        <input type="text" name="siPoup01" value="" class="col-8 form-control mascara-moeda" placeholder="0,00" aria-describedby="inputGroup-PP01" required />
                                     </div>
                                 </div>
                                 <div class="row">
                                     <div class="input-group input-group-sm mb-2">
-                                        <span class="input-group-text col-4" id="inputGroup-PP51">Poupança 51</span>
-                                        <input type="text" name="siPoup51" value="R$ 0,00" class="col-8 form-control" aria-describedby="inputGroup-PP51" required />
+                                        <span class="input-group-text col-4" id="inputGroup-PP51">Poupança 51 (R$)</span>
+                                        <input type="text" name="siPoup51" value="" class="col-8 form-control mascara-moeda" placeholder="0,00" aria-describedby="inputGroup-PP51" required />
                                     </div>
                                 </div>
                                 <div class="row">
                                     <div class="input-group input-group-sm mb-2">
-                                        <span class="input-group-text col-4" id="inputGroup-inv">S. Público Aut.</span>
-                                        <input type="text" name="siInvSPubl" value="R$ 0,00" class="col-8 form-control" aria-describedby="inputGroup-invSPubl" required />
+                                        <span class="input-group-text col-4" id="inputGroup-inv">S. Público Aut. (R$)</span>
+                                        <input type="text" name="siInvSPubl" value="" class="col-8 form-control mascara-moeda" placeholder="0,00" aria-describedby="inputGroup-invSPubl" required />
                                     </div>
                                 </div>
                                 <div class="row">
                                     <div class="input-group input-group-sm mb-2">
-                                        <span class="input-group-text col-4" id="inputGroup-inv">BB RF CP Aut.</span>
-                                        <input type="text" name="siInvBbRf" value="R$ 0,00" class="col-8 form-control" aria-describedby="inputGroup-invBbRf" required />
+                                        <span class="input-group-text col-4" id="inputGroup-inv">BB RF CP Aut. (R$)</span>
+                                        <input type="text" name="siInvBbRf" value="" class="col-8 form-control mascara-moeda" placeholder="0,00" aria-describedby="inputGroup-invBbRf" required />
                                     </div>
                                 </div>
                             </div>
@@ -1706,33 +1710,33 @@ unset($_SESSION['aba_ativa']);
                                 <div class="row">
                                     <div class="col">
                                         <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-4" id="inputGroup-CC">Conta Corrente</span>
-                                            <input type="text" name="corrente" class="col-8 form-control" value="R$ <?= number_format($fCorrenteM ?? 0, 2, ',', '.') ?>" aria-describedby="inputGroup-CC" />
+                                            <span class="input-group-text col-4" id="inputGroup-CC">Conta Corrente (R$)</span>
+                                            <input type="text" name="corrente" class="col-8 form-control mascara-moeda" placeholder="0,00" value="R$ <?= number_format($fCorrenteM ?? 0, 2, ',', '.') ?>" aria-describedby="inputGroup-CC" />
                                         </div>
                                     </div>
                                 </div>
                                 <div class="row">
                                     <div class="input-group input-group-sm mb-2">
-                                        <span class="input-group-text col-4" id="inputGroup-PP01">Poupança 01</span>
-                                        <input type="text" name="poup01" class="col-8 form-control" value="R$ <?= number_format($fPoupanca01M ?? 0, 2, ',', '.') ?>" aria-describedby="inputGroup-PP01" />
+                                        <span class="input-group-text col-4" id="inputGroup-PP01">Poupança 01 (R$)</span>
+                                        <input type="text" name="poup01" class="col-8 form-control mascara-moeda" placeholder="0,00" value="R$ <?= number_format($fPoupanca01M ?? 0, 2, ',', '.') ?>" aria-describedby="inputGroup-PP01" />
                                     </div>
                                 </div>
                                 <div class="row">
                                     <div class="input-group input-group-sm mb-2">
-                                        <span class="input-group-text col-4" id="inputGroup-PP51">Poupança 51</span>
-                                        <input type="text" name="poup51" class="col-8 form-control" value="R$ <?= number_format($fPoupanca51M ?? 0, 2, ',', '.') ?>" aria-describedby="inputGroup-PP51" />
+                                        <span class="input-group-text col-4" id="inputGroup-PP51">Poupança 51 (R$)</span>
+                                        <input type="text" name="poup51" class="col-8 form-control mascara-moeda" placeholder="0,00" value="R$ <?= number_format($fPoupanca51M ?? 0, 2, ',', '.') ?>" aria-describedby="inputGroup-PP51" />
                                     </div>
                                 </div>
                                 <div class="row">
                                     <div class="input-group input-group-sm mb-2">
-                                        <span class="input-group-text col-4" id="inputGroup-inv">S. Público Aut.</span>
-                                        <input type="text" name="invSPubl" class="col-8 form-control" value="R$ <?= number_format($fSPubAutM ?? 0, 2, ',', '.') ?>" aria-describedby="inputGroup-invSPubl" />
+                                        <span class="input-group-text col-4" id="inputGroup-inv">S. Público Aut. (R$)</span>
+                                        <input type="text" name="invSPubl" class="col-8 form-control mascara-moeda" placeholder="0,00" value="R$ <?= number_format($fSPubAutM ?? 0, 2, ',', '.') ?>" aria-describedby="inputGroup-invSPubl" />
                                     </div>
                                 </div>
                                 <div class="row">
                                     <div class="input-group input-group-sm mb-2">
-                                        <span class="input-group-text col-4" id="inputGroup-invBbRf">BB RF CP Aut.</span>
-                                        <input type="text" name="invBbRf" class="col-8 form-control" value="R$ <?= number_format($fBbRfCpM ?? 0, 2, ',', '.') ?>" aria-describedby="inputGroup-invBbRf" />
+                                        <span class="input-group-text col-4" id="inputGroup-invBbRf">BB RF CP Aut. (R$)</span>
+                                        <input type="text" name="invBbRf" class="col-8 form-control mascara-moeda" placeholder="0,00" value="R$ <?= number_format($fBbRfCpM ?? 0, 2, ',', '.') ?>" aria-describedby="inputGroup-invBbRf" />
                                     </div>
                                 </div>
                             </div>
@@ -1750,117 +1754,90 @@ unset($_SESSION['aba_ativa']);
         <div class="modal fade modal-trigger" id="rentabilidadeModal" tabindex="-1" aria-labelledby="rentabilidadeModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
-                    <form action="<?= $actionRent ?? '?includeRent=true' ?>" method="post" name="rentabilidade">
+                    <form action="<?= htmlspecialchars($actionRent ?? '?includeRent=true') ?>" method="post" name="rentabilidade">
                         <div class="modal-header">
-                            <h2 class="modal-title fs-5" id="rentabilidadeModalLabel"><?= $tituloRent ?? 'Nova Rentabilidade' ?></h2>
+                            <h2 class="modal-title fs-5" id="rentabilidadeModalLabel"><?= htmlspecialchars($tituloRent ?? 'Nova Rentabilidade') ?></h2>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            <input type="hidden" value="<?= $idRentM ?? '' ?>" name="idRentM" />
+                            <input type="hidden" value="<?= htmlspecialchars($idRentM ?? '') ?>" name="idRentM" />
                         </div>
                         <div class="modal-body">
-                            <div class="content-fluid">
-                                <div class="row">
-                                    <div class="input-group input-group-sm mb-2">
-                                        <label class="input-group-text col-4" for="inputGroup-agConta">AG / Conta</label>
-                                        <?php
-                                        if (isset($idRentM) && $idRentM != null) {
-                                            if ($proc = $bancoModel->findById($idContaM)) {
-                                                $agencia = $proc->agencia;
-                                                $conta = $proc->conta;
-                                            }
-                                            
-                                        ?>
-                                            <input type="text" name="agConta" class="col-8 form-control" value="<?= $agencia . ' / ' . $conta ?>" aria-describedby="inputGroup-rMar" />
-                                        <?php
-                                        } else {
-                                        ?>
-                                            <select name="agConta" class="form-select w-50 col-8" id="inputGroup-agConta" required>
-                                                <option selected disabled="disabled">Selecione...</option>
-                                                <?php
-                                                $contas = $bancoModel->findByProcId($_SESSION['idProc']);
-                                                foreach ($contas as $conta):
-                                                    $idContaR = $conta->id;
-                                                    $agenciaR = $conta->agencia;
-                                                    $contaR = $conta->conta;
-                                                    echo '<option value="' . $idContaR . '">' . $agenciaR . ' / ' . $contaR . '</option>';
-                                                endforeach;
+                            <div class="container-fluid">
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <div class="input-group input-group-sm">
+                                            <label class="input-group-text col-4" for="inputGroup-agConta">AG / Conta</label>
+                                            <?php
+                                            if (isset($idRentM) && $idRentM != null):
+                                                if ($proc = $bancoModel->findById($idContaM)) {
+                                                    $agencia = htmlspecialchars($proc->agencia);
+                                                    $conta = htmlspecialchars($proc->conta);
+                                                }
                                                 
+                                            ?>
+                                                <input type="text" name="agConta" class="col-8 form-control" value="<?= $agencia . ' / ' . $conta ?>" aria-describedby="inputGroup-rMar" readonly />
+                                            <?php else: ?>
+                                                <select name="agConta" class="form-select w-50 col-8" id="inputGroup-agConta" required>
+                                                    <option selected disabled="disabled">Selecione...</option>
+                                                    <?php
+                                                    $contas = $bancoModel->findByProcId($_SESSION['idProc']);
+                                                    foreach ($contas as $c):
+                                                    ?>
+                                                        <option value="<?= htmlspecialchars($c->id) ?>">
+                                                            <?= htmlspecialchars($c->agencia) ?> / <?= htmlspecialchars($c->conta) ?>
+                                                        </option>                                                        
+                                                    <?php endforeach; ?>                                                    
+                                                </select>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>                                        
+                                </div>
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <div class="input-group input-group-sm">
+                                            <label class="input-group-text col-4" for="variacao">Poup. / Apl. Financeira</label>
+                                            <select name="variacao" class="form-select" id="variacao" required>
+                                                <option <?= !isset($variacaoM) ? 'selected' : '' ?> disabled="disabled">Selecione...</option>
+                                                <?php
+                                                $opcoes = ['Poupança 01', 'Poupança 51', 'S. Público Aut.', 'BB RF CP Aut.'];
+                                                foreach ($opcoes as $opcao):
+                                                    $selected = (isset($variacaoM) && $variacaoM === $opcao) ? 'selected' : '';
                                                 ?>
+                                                    <option value="<?= htmlspecialchars($opcao) ?>" <?= $selected ?>><?= $opcao ?></option>
+                                                <?php endforeach; ?>                                                
                                             </select>
-                                        <?php
-                                        }
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <?php
+                                    // Array associativo com as chaves das variáveis e os nomes dos meses
+                                    $meses = [
+                                        'Jan' => 'Janeiro', 'Fev' => 'Fevereiro', 'Mar' => 'Março', 
+                                        'Abr' => 'Abril', 'Mai' => 'Maio', 'Jun' => 'Junho',
+                                        'Jul' => 'Julho', 'Ago' => 'Agosto', 'Set' => 'Setembro', 
+                                        'Out' => 'Outubro', 'Nov' => 'Novembro', 'Dez' => 'Dezembro'
+                                    ];
+
+                                    // Divide o array em duas metades (6 meses para cada coluna)
+                                    $colunas = array_chunk($meses, 6, true);
+                                    
+                                    foreach ($colunas as $coluna): ?>
+                                        <div class="col-12 col-md-6">
+                                            <?php foreach ($coluna as $chave => $nomeMes):
+                                            // Cria o nome da variável dinamicamente (ex: $rJanM)
+                                            $varMes = "r" . $chave . "M";
+                                            $valorMes = isset($$varMes) ? 'R$ ' . number_format($$varMes, 2, ",", ".") : '';
                                         ?>
-
+                                            <div class="input-group input-group-sm mb-2">
+                                                <label class="input-group-text col-5" for="<?= "input-$chave" ?>"><?= $nomeMes ?></label>
+                                                <input type="text" id="<?= "input-$chave" ?>" name="r<?= $chave ?>" class="form-control mascara-moeda" placeholder="0,00" value="<?= $valorMes ?>" />
+                                            </div>
+                                        <?php endforeach; ?>
                                     </div>
-                                </div>
-                                <div class="row">
-                                    <div class="input-group input-group-sm mb-2">
-                                        <label class="input-group-text col-4" for="inputGroup-ppApl">Poup. / Apl. Financeira</label>
-                                        <select name="variacao" class="form-select w-50 col-8" id="inputGroup-ppApl" required>
-                                            <option <?= $variacaoM ?? 'selected'  ?> disabled="disabled">Selecione...</option>
-                                            <option value="Poupança 01" <?= isset($variacaoM) && $variacaoM == 'Poupança 01' ? 'selected' : ''; ?>>Poupança 01</option>
-                                            <option value="Poupança 51" <?= isset($variacaoM) && $variacaoM == 'Poupança 51' ? 'selected' : ''; ?>>Poupança 51</option>
-                                            <option value="S. Público Aut." <?= isset($variacaoM) && $variacaoM == 'S. Público Aut.' ? 'selected' : ''; ?>>S. Público Aut.</option>
-                                            <option value="BB RF CP Aut." <?= isset($variacaoM) && $variacaoM == 'BB RF CP Aut.' ? 'selected' : ''; ?>>BB RF CP Aut.</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col">
-                                        <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-5" id="inputGroup-rJan">Janeiro</span>
-                                            <input type="text" name="rJan" class="col-7 form-control" value="<?= isset($rJanM) ? 'R$ ' . number_format($rJanM, 2, ",", ".") : ''; ?>" aria-describedby="inputGroup-rJan" />
-                                        </div>
-                                        <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-5" id="inputGroup-rFev">Fevereiro</span>
-                                            <input type="text" name="rFev" class="col-7 form-control" value="<?= isset($rFevM) ? 'R$ ' . number_format($rFevM, 2, ",", ".") : ''; ?>" aria-describedby="inputGroup-rFev" />
-                                        </div>
-                                        <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-5" id="inputGroup-rMar">Março</span>
-                                            <input type="text" name="rMar" class="col-7 form-control" value="<?= isset($rMarM) ? 'R$ ' . number_format($rMarM, 2, ",", ".") : ''; ?>" aria-describedby="inputGroup-rMar" />
-                                        </div>
-                                        <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-5" id="inputGroup-rAbr">Abril</span>
-                                            <input type="text" name="rAbr" class="col-7 form-control" value="<?= isset($rAbrM) ? 'R$ ' . number_format($rAbrM, 2, ",", ".") : ''; ?>" aria-describedby="inputGroup-rAbr" />
-                                        </div>
-                                        <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-5" id="inputGroup-rMai">Maio</span>
-                                            <input type="text" name="rMai" class="col-7 form-control" value="<?= isset($rMaiM) ? 'R$ ' . number_format($rMaiM, 2, ",", ".") : ''; ?>" aria-describedby="inputGroup-rMai" />
-                                        </div>
-                                        <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-5" id="inputGroup-rJun">Junho</span>
-                                            <input type="text" name="rJun" class="col-7 form-control" value="<?= isset($rJunM) ? 'R$ ' . number_format($rJunM, 2, ",", ".") : ''; ?>" aria-describedby="inputGroup-rJun" />
-                                        </div>
-                                    </div>
-
-                                    <div class="col">
-                                        <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-5" id="inputGroup-rJul">Julho</span>
-                                            <input type="text" name="rJul" class="col-7 form-control" value="<?= isset($rJulM) ? 'R$ ' . number_format($rJulM, 2, ",", ".") : ''; ?>" aria-describedby="inputGroup-rJul" />
-                                        </div>
-                                        <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-5" id="inputGroup-rAgo">Agosto</span>
-                                            <input type="text" name="rAgo" class="col-7 form-control" value="<?= isset($rAgoM) ? 'R$ ' . number_format($rAgoM, 2, ",", ".") : ''; ?>" aria-describedby="inputGroup-rAgo" />
-                                        </div>
-                                        <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-5" id="inputGroup-rSet">Setembro</span>
-                                            <input type="text" name="rSet" class="col-7 form-control" value="<?= isset($rSetM) ? 'R$ ' . number_format($rSetM, 2, ",", ".") : ''; ?>" aria-describedby="inputGroup-rSet" />
-                                        </div>
-                                        <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-5" id="inputGroup-rOut">Outubro</span>
-                                            <input type="text" name="rOut" class="col-7 form-control" value="<?= isset($rOutM) ? 'R$ ' . number_format($rOutM, 2, ",", ".") : ''; ?>" aria-describedby="inputGroup-rOut" />
-                                        </div>
-                                        <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-5" id="inputGroup-rNov">Novembro</span>
-                                            <input type="text" name="rNov" class="col-7 form-control" value="<?= isset($rNovM) ? 'R$ ' . number_format($rNovM, 2, ",", ".") : ''; ?>" aria-describedby="inputGroup-rNov" />
-                                        </div>
-                                        <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-5" id="inputGroup-rDez">Dezembro</span>
-                                            <input type="text" name="rDez" class="col-7 form-control" value="<?= isset($rDezM) ? 'R$ ' . number_format($rDezM, 2, ",", ".") : ''; ?>" aria-describedby="inputGroup-rDez" />
-                                        </div>
-                                    </div>
+                                <?php endforeach; ?>
                                 </div>
                             </div>
-                        </div>
+                        </div>                                    
                         <div class="modal-footer">
                             <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cancelar</button>
                             <?= $botaoRent; ?>
@@ -1879,34 +1856,38 @@ unset($_SESSION['aba_ativa']);
                         <div class="modal-header">
                             <h2 class="modal-title fs-5" id="pagamentoModalLabel">Atualizar Pagamento</h2>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            <input type="hidden" value="<?= $idDespM ?? '' ?>" name="idDespM" />
+                            <input type="hidden" value="<?= htmlspecialchars($idDespM ?? '') ?>" name="idDespM" />
                         </div>
                         <div class="modal-body">
-                            <div class="content-fluid">                                        
-                                <div class="row">
-                                    <div class="input-group input-group-sm mb-2">
-                                        <label class="input-group-text col-4" for="inputGroup-pgto">Ident. Pagamento</label>
-                                        <input type="text" name="pagamento" value="<?= $numPgtoM ?? '' ?>" class="col-8 form-control" id="inputGroup-pgto" readonly />
+                            <div class="container-fluid">                                        
+                                <div class="row mb-2">
+                                    <div class="col-12">
+                                        <div class="input-group input-group-sm">
+                                            <label class="input-group-text col-4" for="inputGroup-pgto">Ident. Pagamento</label>
+                                            <input type="text" id="inputGroup-pgto" name="pagamento" class="form-control" value="<?= htmlspecialchars($numPgtoM ?? '') ?>" readonly />
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="row">
-                                    <div class="col">
-                                        <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-4" id="inputGroup-dataDoc">Data Pagamento</span>
-                                            <input type="date" name="dataPg" class="col-8 form-control" value="<?= $dataPgM ?? '' ?>" aria-describedby="inputGroup-dataDoc" />
+                                <div class="row mb-2">
+                                    <div class="col-12">
+                                        <div class="input-group input-group-sm">
+                                            <label class="input-group-text col-4" for="inputGroup-dataDoc">Data Pagamento</label>
+                                            <input type="date" id="inputGroup-dataDoc" name="dataPg" class="form-control" value="<?= htmlspecialchars($dataPgM ?? '') ?>" />
                                         </div>
                                     </div>
                                 </div>
                                 <div class="row">
-                                    <div class="input-group input-group-sm mb-2">
-                                        <span class="input-group-text col-4" id="inputGroup-valDesp">Valor Pago</span>
-                                        <input type="text" name="valPago" class="col-8 form-control" value="<?= $valorPgReal ?? '' ?>" aria-describedby="inputGroup-valDesp" />
+                                    <div class="col-12">
+                                        <div class="input-group input-group-sm">
+                                            <label class="input-group-text col-4" for="inputGroup-valDesp">Valor Pago</label>
+                                            <input type="text" id="inputGroup-valDesp" name="valPago" class="form-control mascara-moeda" value="<?= htmlspecialchars($valorPgReal ?? '') ?>" />
+                                        </div>
                                     </div>
                                 </div>                                    
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                             <input type="submit" class="btn btn-warning" value="Atualizar" />
                         </div>
                     </form>
@@ -1922,26 +1903,30 @@ unset($_SESSION['aba_ativa']);
                         <div class="modal-header">
                             <h2 class="modal-title fs-5" id="glosaModalLabel">Glosar Despesa</h2>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            <input type="hidden" value="<?= $idDespM ?? '' ?>" name="idDespM" />
+                            <input type="hidden" value="<?= htmlspecialchars($idDespM ?? '') ?>" name="idDespM" />
                         </div>
                         <div class="modal-body">
-                            <div class="content-fluid">
-                                <div class="row">
-                                    <div class="input-group input-group-sm mb-2">
-                                        <span class="input-group-text col-4" id="inputGroup-valGlosa">Valor da Glosa</span>
-                                        <input type="text" name="valGlosa" class="col-8 form-control" value="<?= $valorGlReal ?? '' ?>" aria-describedby="inputGroup-valGlosa" required />
+                            <div class="container-fluid">
+                                <div class="row mb-2">
+                                    <div class="col-12">
+                                        <div class="input-group input-group-sm">
+                                            <label class="input-group-text col-4" for="inputGroup-valGlosa">Valor da Glosa</label>
+                                            <input type="text" id="inputGroup-valGlosa" name="valGlosa" class="form-control mascara-moeda" value="<?= htmlspecialchars($valorGlReal ?? '') ?>" required />
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="row">
-                                    <div class="input-group input-group-sm mb-2">
-                                        <label class="input-group-text col-4" for="inputGroup-motGlosa">Motivo</label>
-                                        <input type="text" name="motivoGlosa" value="<?= $motivoGlM ?? '' ?>" class="col-8 form-control" id="inputGroup-motGlosa" required />
+                                    <div class="col-12">
+                                        <div class="input-group input-group-sm">
+                                            <label class="input-group-text col-4" for="inputGroup-motGlosa">Motivo</label>
+                                            <input type="text" id="inputGroup-motGlosa" name="motivoGlosa" class="form-control" value="<?= htmlspecialchars($motivoGlM ?? '') ?>" required />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                             <input type="submit" class="btn btn-warning" value="Atualizar" />
                         </div>
                     </form>
@@ -1959,49 +1944,53 @@ unset($_SESSION['aba_ativa']);
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <div class="content-fluid">
-                                <div class="row">
-                                    <div class="input-group input-group-sm mb-2">
-                                        <span class="input-group-text col-3" id="inputGroup-ocorrencia">Ocorrência</span>
-                                        <select name="ocorrencia" class="form-select col-9" id="inputGroup-ocorrencia" required>
-                                            <option disabled selected>Selecione...</option>
-                                            <?php
-                                            $ocorrencias = $conciliacaoModel->listarOcorrencias();
-                                            if ($ocorrencias) {
-                                                foreach ($ocorrencias as $occ) {
-                                                    $idOcc = $occ->id;
-                                                    $ocorrencia = $occ->ocorrencia;
-                                                    echo '<option value="' . $idOcc . '">' . $ocorrencia . '</option>';
+                            <div class="container-fluid">
+                                <div class="row mb-2">
+                                    <div class="col-12">
+                                        <div class="input-group input-group-sm">
+                                            <label class="input-group-text col-3" for="inputGroup-ocorrencia">Ocorrência</label>
+                                            <select name="ocorrencia" id="inputGroup-ocorrencia" class="form-select" required>
+                                                <option disabled selected value="">Selecione...</option>
+                                                <?php
+                                                $ocorrencias = $conciliacaoModel->listarOcorrencias();
+                                                if ($ocorrencias) {
+                                                    foreach ($ocorrencias as $occ) {
+                                                        echo '<option value="' . htmlspecialchars($occ->id) . '">' . htmlspecialchars($occ->ocorrencia) . '</option>';
+                                                    }
                                                 }
-                                            }
-                                            ?>
-                                        </select>
+                                                ?>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="row">
-                                    <div class="input-group input-group-sm mb-2">
-                                        <span class="input-group-text col-3" id="inputGroup-descricao">Descrição</span>
-                                        <textarea name="descricao" class="w-50 col-9 form-control" aria-describedby="inputGroup-descricao" rows="3" maxlength="1025"></textarea>
+                                <div class="row mb-2">
+                                    <div class="col-12">
+                                        <div class="input-group input-group-sm">
+                                            <label class="input-group-text col-3" for="inputGroup-descricao">Descrição</label>
+                                            <textarea name="descricao" id="inputGroup-descricao" class="form-control" rows="3" maxlength="1025"></textarea>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="row">
-                                    <div class="col">
-                                        <div class="input-group input-group-sm mb-2">
-                                            <span class="input-group-text col-3" id="inputGroup-dataOcc">Data</span>
-                                            <input type="date" name="dataOcc" class="col-9 form-control" aria-describedby="inputGroup-dataOcc" required />
+                                <div class="row mb-2">
+                                    <div class="col-12">
+                                        <div class="input-group input-group-sm">
+                                            <label class="input-group-text col-3" for="inputGroup-dataOcc">Data</label>
+                                            <input type="date" id="inputGroup-dataOcc" name="dataOcc" class="form-control" required />
                                         </div>
                                     </div>
                                 </div>
                                 <div class="row">
-                                    <div class="input-group input-group-sm mb-2">
-                                        <span class="input-group-text col-3" id="inputGroup-valorOcc">Valor</span>
-                                        <input type="text" name="valorOcc" class="col-9 form-control" aria-describedby="inputGroup-valorOcc" required />
+                                    <div class="col-12">
+                                        <div class="input-group input-group-sm">
+                                            <label class="input-group-text col-3" for="inputGroup-valorOcc">Valor</label>
+                                            <input type="text" id="inputGroup-valorOcc" name="valorOcc" class="form-control mascara-moeda" required />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                             <input type="submit" class="btn btn-success" value="Incluir" />
                         </div>
                     </form>
@@ -2026,6 +2015,81 @@ unset($_SESSION['aba_ativa']);
 
     <script src="./js/script.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        $(document).ready(function() {
+            // APLICAR MÁSCARAS AOS INPUTS
+
+            // Aplica a máscara de dinheiro da direita para a esquerda
+            // 1. A formatação inteligente (substitui o .mask do plugin)
+            $('.mascara-moeda').on('input', function() {
+                let valor = $(this).val();
+                
+                // Verifica e guarda se o usuário já colocou o sinal de negativo
+                let isNegative = valor.includes('-');
+                
+                // Extrai apenas os números, ignorando pontos, vírgulas e letras
+                let numeros = valor.replace(/\D/g, '');
+                
+                if (numeros === '') {
+                    $(this).val('');
+                    return;
+                }
+                
+                // Divide por 100 para criar os centavos automaticamente (ex: "1500" vira 15.00)
+                let decimais = parseFloat(numeros) / 100;
+                
+                // Usa o formatador nativo do navegador para o padrão brasileiro (R$ 1.500,00)
+                let formatado = decimais.toLocaleString('pt-BR', { 
+                    minimumFractionDigits: 2, 
+                    maximumFractionDigits: 2 
+                });
+                
+                // Devolve o valor formatado para o input, recolocando o '-' se for negativo
+                $(this).val(isNegative ? '-' + formatado : formatado);
+            });
+
+            // 2. O interruptor do sinal de menos (Mantemos este!)
+            $('.mascara-moeda').on('keypress', function(e) {
+                if (e.key === '-') {
+                    e.preventDefault();
+                    let valorAtual = $(this).val();
+                    
+                    // Se já tem o menos, a gente tira. Se não tem, a gente coloca.
+                    if (valorAtual.includes('-')) {
+                        $(this).val(valorAtual.replace('-', '')).trigger('input');
+                    } else {
+                        $(this).val('-' + valorAtual).trigger('input');
+                    }
+                }
+            });
+            
+            // Se no futuro quiser mascarar CNPJ ou CPF, basta usar:
+            $('.mascara-cnpj').mask('00.000.000/0000-00');
+
+
+            // 2. TRANSFORMAR AS TABELAS EM DATATABLES
+            // Pega todas as tabelas com a classe "table" e aplica o plugin
+            // $('.table').DataTable({
+            //     language: {
+            //         // Tradução oficial para o Português do Brasil
+            //         url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json',
+            //     },
+            //     order: [], // Não força ordenação automática ao carregar a página
+            //     pageLength: 10, // Mostra 10 linhas por vez
+            //     responsive: true,
+            //     columnDefs: [
+            //         { orderable: false, targets: -1 } // Desabilita a setinha de ordenar na última coluna (Ações/Botões)
+            //     ]
+            // });
+        });
+    </script>
 </body>
 
 </html>

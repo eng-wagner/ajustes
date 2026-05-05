@@ -72,7 +72,7 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
                                 'acao' => $acao
                                 ]);
                                 $_SESSION['flag'] = true;
-                                header("Location:dashboard.php");
+                                header("Location:hub.php");
                             }                       
                         }
                         else

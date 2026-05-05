@@ -4,14 +4,14 @@
             <i class="lni lni-menu"></i>                    
         </button>
         <div class="sidebar-logo">
-            <a href="#"><span class="welcome">Bem Vindo,</span><br><?= $firstName ?></a>
+            <a href="#"><span class="welcome">Olá, </span><br><?= $firstName ?></a>
         </div>                
     </div>
     <ul class="sidebar-nav">
         <li class="sidebar-item">
-            <a href="dashboard.php" class="sidebar-link">
-                <i class="lni lni-dashboard"></i>
-                <span>Dashboard</span>
+            <a href="hub.php" class="sidebar-link">
+                <i class="lni lni-grid-alt"></i>
+                <span>Menu</span>
             </a>
         </li>
         <li class="sidebar-item">
@@ -40,14 +40,21 @@
             if ($perfil != "ofp") {
             ?>
             <li class="sidebar-item">
-                <a href="?analiseTC=true" class="sidebar-link">
+                <a href="termoPC.php" class="sidebar-link">
                     <i class="lni lni-check-box"></i>
                     <span>Prestação de Contas TC</span>
                 </a>
             </li>
         <?php
             }
-        ?>
+        if ($perfil == "adm" || $perfil == "ges"): ?>
+        <li class="sidebar-item">
+            <a href="dashboard_ajustes.php" class="sidebar-link">
+                <i class="lni lni-layers"></i>
+                <span>Gestão de Ajustes e Parcerias</span>
+            </a>
+        </li>
+        <?php endif; ?>
         <li class="sidebar-item">
             <a href="#" class="sidebar-link has-dropdown collapsed" data-bs-toggle="collapse" data-bs-target="#relatorios" aria-expanded="false" aria-controls="relatorios">
                 <i class="lni lni-layout"></i>
@@ -63,6 +70,9 @@
                 </li>
                 <li class="sidebar-item">
                     <a href="pendencia.php?Prg=0&Reg=2&user=99" class="sidebar-link">Pendências PDDE</a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="relatorio_despesas.php?Forn=0&Prg=0&Cat=0" class="sidebar-link">Despesas</a>
                 </li>
                 <?php
                 }

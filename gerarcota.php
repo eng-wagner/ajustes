@@ -64,40 +64,21 @@ $currentUser = $_SESSION['user_id'];
         session_unset();
         header("Location:index.php?status=logoff");
     }
-    $firstName = substr($userName,0,strpos($userName," "));
-
-    if (isset($_REQUEST['pddeAE']) && $_REQUEST['pddeAE'] == true) {
-        $_SESSION['nav'] = array("active", "", "", "", "");
-        $_SESSION['navShow'] = array("show active", "", "", "", "");
-        $_SESSION['sel'] = array("true", "false", "false", "false", "false");
-        header("Location:pddePC.php");
-    }
-
-    if (isset($_REQUEST['pddeAF']) && $_REQUEST['pddeAF'] == true) {
-        $_SESSION['navF'] = array("active", "", "", "", "", "");
-        $_SESSION['navShowF'] = array("show active", "", "", "", "", "");
-        $_SESSION['selF'] = array("true", "false", "false", "false", "false", "false");
-        header("Location:pddeFinanc.php");
-    }
-
-    if(isset($_REQUEST['analiseTC']) && $_REQUEST['analiseTC'] == true){
-        $_SESSION['nav'] = array("active","","","","");
-        $_SESSION['navShow'] = array("show active","","","","");
-        $_SESSION['sel'] = array("true","false","false","false","false");
-        header("Location:termoPC.php");
-    }
+    $firstName = substr($userName,0,strpos($userName," "));    
 
     if (isset($_REQUEST['gerar']) && $_REQUEST['gerar'] == true) {
-        unset($_SESSION['cota']);
-        $cota = array($_POST);
-        $_SESSION['cota'] = $cota;        
+        unset($_SESSION['cota']);        
+        $_SESSION['cota'] = array($_POST);
+
         if(isset($_POST['tipoCota']) && $_POST['tipoCota'] ==  1)
         {        
-            echo "<script>window.open('cota.php', '_blank');</script>";
+            header("Location: cota.php");
+            exit();
         }
         else if(isset($_POST['tipoCota']) && $_POST['tipoCota'] ==  2)
         {
-            echo "<script>window.open('cotafin.php', '_blank');</script>";
+            header("Location: cotafin.php");
+            exit();
         }
         //print_r($cota);
         //var_dump($cota);
@@ -115,79 +96,91 @@ $currentUser = $_SESSION['user_id'];
             <!-- Início do Conteúdo -->
 
             <div class="container-fluid">
-                <form method="post" action="?gerar=true" name="meuForm" class="form-group mx-auto">
+                <form method="post" action="?gerar=true" target="_blank" id="formCota" onsubmit="return validarFormulario(event)" class="form-group mx-auto">
                     <div class="row">
                         <div class="col-6">
                             <div class="input-group input-group-sm mb-2">
-                                <label class="input-group-text col-2" for="inputGroup-inst">Instituição</label>
-                                <select name="instituicao" class="form-select w-50 col-10" id="inputGroup-inst">
-                                    <option selected>Selecione a instituição...</option>
-                                    <?php
-                                    $instituicoes = $instituicaoModel->all();                                    
-                                    if ($instituicoes) {
-                                        foreach($instituicoes as $inst) {
-                                            $id = $inst->id;
-                                            $instituicao = $inst->instituicao;
-                                            echo '<option value="' . $id . '">' . $instituicao . '</option>';
+                                <div class="form-floating mb-3">
+                                    <select name="instituicao" class="form-select" id="inputGroup-inst" required>
+                                        <option selected>Selecione a instituição...</option>
+                                        <?php
+                                        $instituicoes = $instituicaoModel->all();                                    
+                                        if ($instituicoes) {
+                                            foreach($instituicoes as $inst) {
+                                                $id = $inst->id;
+                                                $instituicao = $inst->instituicao;
+                                                echo '<option value="' . $id . '">' . $instituicao . '</option>';
+                                            }
                                         }
-                                    }
-                                    ?>
-                                </select>
+                                        ?>
+                                    </select>
+                                    <label for="inputGroup-inst">Instituição</label>
+                                </div>
                             </div>
                         </div>
                         <div class="col-3">
                             <div class="input-group input-group-sm mb-2">
-                                <label class="input-group-text col-4" for="inputGroup-acao">Ação</label>
-                                <select name="programa" class="form-select w-50 col-8" id="inputGroup-acao" require>
-                                    <option selected disabled>Selecione...</option>
-                                    <option value="1">PDDE Básico</option>
-                                    <option value="2">PDDE Qualidade</option>
-                                    <option value="3">PDDE Equidade</option>
-                                    <option value="4">PDDE Educação Integral</option>
-                                    <option value="5">PDDE PDE Escola</option>
-                                </select>
+                                <div class="form-floating mb-3">
+                                    <select name="programa" class="form-select" id="inputGroup-acao" required>
+                                        <option selected disabled>Selecione...</option>
+                                        <option value="1">PDDE Básico</option>
+                                        <option value="2">PDDE Qualidade</option>
+                                        <option value="3">PDDE Equidade</option>
+                                        <option value="4">PDDE Educação Integral</option>
+                                        <option value="5">PDDE PDE Escola</option>
+                                    </select>
+                                    <label for="inputGroup-acao">Ação</label>
+                                </div>
                             </div>
                         </div>
                         
-                <div class="col-3">
-                    <div class="input-group input-group-sm mb-2">
-                        <label class="input-group-text col-4" for="inputGroup-tipo">Tipo da Cota</label>
-                        <select name="tipoCota" class="form-select w-50 col-8" id="inputGroup-tipo" require>
-                            <option selected disabled>Selecione...</option>
-                            <option value="1">Juntada e Execução</option>
-                            <option value="2">Análise Financeira</option>
-                        </select>                                                            
+                        <div class="col-3">
+                            <div class="input-group input-group-sm mb-2">
+                                <div class="form-floating mb-3">
+                                    <select name="tipoCota" class="form-select" id="inputGroup-tipo" required>
+                                        <option selected disabled>Selecione...</option>
+                                        <option value="1">Juntada e Execução</option>
+                                        <option value="2">Análise Financeira</option>
+                                    </select>
+                                    <label for="inputGroup-tipo">Tipo da Cota</label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                
-                        <hr>
-                        <h5 class="text-center">Selecione os documentos que vão compor a cota</h5>
-                        <br />
-                        <?php
-                        $itens = $itensModel->all();                        
-                        if ($itens) {
-                            foreach($itens as $docs) {
-                                $idDoc = $docs->id;
-                                $documentosCota = $docs->documentos;
-                                $chName = $docs->chName;
-                                $docAtivo = $docs->ativo;
+                    <div id="area-documentos">                
+                        <hr>                        
+                        <div class="card shadow-sm border-light mb-4">
+                            <div class="card-header bg-white pb-0 border-0">
+                                <h6 class="text-muted fw-bold mb-0">Selecione os documentos que vão compor a cota</h6>
+                            </div>
+                            <div class="card-body">
+                                <div style="max-height: 400px; overflow-y: auto; padding-right: 10px;" class="border rounded p-3 bg-light">
+                                    <?php
+                                    $itens = $itensModel->all();                        
+                                    if ($itens) : 
+                                        foreach($itens as $docs) :
+                                            $idDoc = $docs->id;
+                                            $documentosCota = $docs->documentos;
+                                            $chName = $docs->chName;
+                                            $docAtivo = $docs->ativo;
 
-                                if ($docAtivo == 1) {
-                                    echo '<div class="form-check">';
-                                    echo '<input class="form-check-input" type="checkbox" name="' . $chName . '" value="' . $idDoc . '" id="check_' . $chName . '">';
-                                    echo '<label class="form-check-label" for="check_' . $chName . '">' . $documentosCota . '</label>';
-                                    echo '</div>';
-                                }
-                            }
-                        }
-                        ?>
-                        <br>
-                        <br>
-                        <input type="submit" value="Gerar Cota" class="btn btn-primary" />
+                                            if ($docAtivo == 1) :?> 
+                                                <div class="form-check form-switch mb-2">
+                                                    <input class="form-check-input" type="checkbox" name="<?= $chName  ?>" value="<?= $idDoc ?>" id="check_<?= $chName ?>">
+                                                    <label class="form-check-label ms-2" for="check_<?= $chName ?>"><?= $documentosCota ?></label>
+                                                </div>
+                                            <?php endif;
+                                        endforeach;
+                                    endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <br>                    
+                    <input type="submit" value="Gerar Cota" class="btn btn-primary" />
                 </form>
                 <br /><br />
-                <hr>
-                <br />
+                
 
             </div>
 
@@ -200,7 +193,49 @@ $currentUser = $_SESSION['user_id'];
     <?php include 'footer.php'; ?>
 
     <script src="./js/script.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <script>
+        document.getElementById('inputGroup-tipo').addEventListener('change', function() {
+            const areaDocs = document.getElementById('area-documentos');
+            // Se for 2 (Análise Financeira), esconde os documentos. Senão, mostra.
+            if(this.value === '2') {
+                areaDocs.style.display = 'none';
+            } else {
+                areaDocs.style.display = 'block';
+            }
+        });
+
+        function validarFormulario(event) {
+            const tipoAcao = document.getElementById('inputGroup-tipo').value;
+            // Só valida os checkboxes se NÃO for Análise Financeira (que esconde os docs)
+            if (tipoAcao !== '2') {
+                const checkboxes = document.querySelectorAll('#area-documentos .form-check-input');
+                const marcados = Array.from(checkboxes).some(cb => cb.checked);
+                
+                if (!marcados) {
+                    event.preventDefault(); // Impede o envio do form
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Atenção!',
+                        text: 'Selecione pelo menos um documento para gerar a cota.'
+                    });
+                    return false;
+                }
+            }
+            return true; // Se estiver tudo certo, deixa o formulário enviar
+        }
+    </script>
 </body>
 
 </html>

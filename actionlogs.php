@@ -15,16 +15,22 @@ $timezone = new DateTimeZone("America/Sao_Paulo");
 if (empty($_SESSION['user_id'])) {
     header("Location: index.php?status=sessao_invalida");
     exit();
-}
-else
-{
+} else {
     $loggedUser = $userModel->findById($_SESSION['user_id']);
     if ($loggedUser) {
         $userName = $loggedUser->nome;
         $perfil = $loggedUser->perfil;
+        
+        // NOVA TRAVA DE SEGURANÇA: Chuta quem não é admin
+        if ($perfil !== 'adm') {
+            header("Location: hub.php?erro=acesso_negado");
+            exit();
+        }
     }
 }
 $currentUser = $_SESSION['user_id'];
+$firstName = explode(' ', $userName)[0];
+
 ?>
 
 <!DOCTYPE html>
@@ -38,7 +44,7 @@ $currentUser = $_SESSION['user_id'];
     <link rel="stylesheet" href="./css/style.css">
     <link href="https://cdn.lineicons.com/4.0/lineicons.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Rubik+Doodle+Shadow&display=swap" rel="stylesheet">
-    <title>Gerenciamento</title>
+    <title>Logs do Sistema</title>
     <style>
         h1{
             font-family: 'Rubik Doodle Shadow', system-ui;
@@ -47,88 +53,71 @@ $currentUser = $_SESSION['user_id'];
     </style>
 </head>
 <body>
-    
-    <?php
-
-    if (isset($_REQUEST["logoff"]) && $_REQUEST["logoff"] == true) {
-        $_SESSION['flag'] = false;
-        session_unset();
-        header("Location:index.php?status=logoff");
-    }
-    $firstName = substr($userName,0,strpos($userName," "));
-
-    if(isset($_REQUEST['pddeAE']) && $_REQUEST['pddeAE'] == true){
-        $_SESSION['nav'] = array("active","","","","");
-        $_SESSION['navShow'] = array("show active","","","","");
-        $_SESSION['sel'] = array("true","false","false","false","false");
-        header("Location:pddePC.php");
-    }
-
-    if(isset($_REQUEST['pddeAF']) && $_REQUEST['pddeAF'] == true){
-        $_SESSION['navF'] = array("active","","","","","");
-        $_SESSION['navShowF'] = array("show active","","","","","");
-        $_SESSION['selF'] = array("true","false","false","false","false","false");
-        header("Location:pddeFinanc.php");
-    }
-
-    if(isset($_REQUEST['analiseTC']) && $_REQUEST['analiseTC'] == true){
-        $_SESSION['nav'] = array("active","","","","");
-        $_SESSION['navShow'] = array("show active","","","","");
-        $_SESSION['sel'] = array("true","false","false","false","false");
-        header("Location:termoPC.php");
-    }
-    ?>           
-
     <div class="wrapper">
         <?php include 'menu.php'; ?>
         <div class="main p-3">
-            <div class="text-center">
-                <h1>
-                Logs de Ação
-                </h1>
-            </div>
-            <!-- Início do Conteúdo  -->
-            <div class="row">
-                <table class="table table-sm table-striped table-hover m-auto">
-                    <thead>
-                        <tr class="text-center align-middle">
-                            <th class="col w-auto fw-semibold">Id</th>
-                            <th class="col w-auto fw-semibold">Matricula</th>                        
-                            <th class="col w-auto fw-semibold">Ação</th>
-                            <th class="col w-auto fw-semibold">Data Hora</th>                                        
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php
-                        $logs = $logModel->all();
-                        if($logs)
-                        {
-                            foreach($logs as $log){
-                                $logId = $log->id;
-                                $matUsuario = $log->usuario;
-                                $logAcao = $log->acao;
-                                $dataHora = $log->hora;
-            
-                                $horaAcao = new DateTime($dataHora,$timezone);
-                                $horaAcao = $horaAcao->format('d/m/Y H:i:s');
-                                
-                                echo '<tr class="fw-lighter align-middle">';
-                                echo '<td scope="row" class="text-center">' . $logId . '</td>';                            
-                                echo '<td class="text-center">'. $matUsuario . '</td>';
-                                echo '<td class="text-center">' . $logAcao . '</td>';
-                                echo '<td class="">' . $horaAcao . '</td>';                            
-                                echo '</tr>';                               
-            
-                            }
-                        }        
-                        else
-                        {
-                            echo "<script>alert('Não foram encontrados resultados');</script>";
-                            echo '<h4 class="text-center">A busca não retornou resultados, busque pelo nome de alguma escola.</h4>';
-                        }                                          
-                        ?>
-                    </tbody>
-                </table>
+            <div class="container-fluid">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+                    <div>
+                        <h1 class="title-page mb-0">Logs do Sistema</h1>
+                        <p class="text-muted">Histórico de acessos e ações dos usuários</p>
+                    </div>
+                    <div class="mt-3 mt-md-0 w-100" style="max-width: 300px;">
+                        <div class="input-group shadow-sm">
+                            <span class="input-group-text bg-white border-end-0"><i class="lni lni-search-alt"></i></span>
+                            <input type="text" id="buscaLogs" class="form-control border-start-0" placeholder="Buscar nos logs...">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm border-0 rounded-3">
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
+                            <table class="table table-hover table-striped mb-0" id="tabelaLogs">
+                                <thead class="table-dark" style="position: sticky; top: 0; z-index: 1;">
+                                    <tr>
+                                        <th scope="col" class="text-center py-3">Id</th>
+                                        <th scope="col" class="text-center py-3">Matricula/Usuário</th>
+                                        <th scope="col" class="py-3">Ação</th>
+                                        <th scope="col" class="py-3">Data/Hora</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    $logs = $logModel->all();                        
+                                    if ($logs) {
+                                        foreach($logs as $log) {
+                                            $logId = $log->id;
+                                            $matUsuario = $log->usuario;
+                                            $logAcao = $log->acao;
+                                            
+                                            $dt = new DateTime($log->hora, new DateTimeZone('UTC'));
+                                            $dt->setTimezone($timezone);
+                                            $horaAcao = $dt->format('d/m/Y - H:i:s');
+                                            
+                                            echo '<tr>';
+                                            echo '<td class="text-center align-middle">' . $logId . '</td>';                            
+                                            echo '<td class="text-center align-middle fw-bold">'. $matUsuario . '</td>';
+                                            echo '<td class="align-middle text-muted">' . $logAcao . '</td>';
+                                            echo '<td class="align-middle text-nowrap">' . $horaAcao . '</td>';                            
+                                            echo '</tr>';                               
+                                        }
+                                    } else {
+                                        // Estado vazio muito mais amigável
+                                        echo '<tr><td colspan="4" class="text-center text-muted py-5">';
+                                        echo '<i class="lni lni-empty-file fs-1 d-block mb-3"></i> Nenhum log registrado no momento.';
+                                        echo '</td></tr>';
+                                    }                                          
+                                    ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-end mt-2">
+                    <small class="text-muted">Mostrando resultados recentes.</small>
+                </div>
             </div>
             <!-- Fim do Conteúdo  -->              
         </div>        
@@ -140,6 +129,51 @@ $currentUser = $_SESSION['user_id'];
     
     <script src="./js/script.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <script>
+    // Filtro instantâneo na tabela
+    document.addEventListener("DOMContentLoaded", function() {
+        const inputBusca = document.getElementById('buscaLogs');
+        const tbody = document.querySelector('#tabelaLogs tbody');
+        let cacheLinhas = [];
+        let timeoutDeBusca = null;
+
+        // 1. Cria o cache apenas uma vez quando a página carrega
+        const linhas = tbody.querySelectorAll('tr');
+        linhas.forEach(function(linha) {
+            if (linha.cells.length > 1) { // Ignora a linha de "nenhum log"
+                cacheLinhas.push({
+                    elemento: linha,
+                    texto: linha.innerText.toLowerCase()
+                });
+            }
+        });
+
+        // 2. Aplica o filtro com "Debounce" (espera parar de digitar)
+        inputBusca.addEventListener('input', function() {
+            clearTimeout(timeoutDeBusca); // Cancela a busca anterior se ainda estiver digitando
+            
+            let filtro = this.value.toLowerCase();
+            
+            // Espera 300ms após a última tecla para processar
+            timeoutDeBusca = setTimeout(function() {
+                // Oculta a tabela durante o filtro para o navegador não ter que redesenhar a tela a cada linha (muito mais rápido)
+                tbody.style.display = 'none'; 
+                
+                cacheLinhas.forEach(function(item) {
+                    if (item.texto.includes(filtro)) {
+                        item.elemento.style.display = '';
+                    } else {
+                        item.elemento.style.display = 'none';
+                    }
+                });
+                
+                // Mostra a tabela de novo
+                tbody.style.display = ''; 
+            }, 300);
+        });
+    });
+    </script>
 </body>
 </html>
 <?php

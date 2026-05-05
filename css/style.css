@@ -13,19 +13,38 @@ li {
     list-style: none;
 }
 
+/* .wrapper {
+    display: flex;
+} */
+
 .wrapper {
     display: flex;
+    /* Trava o tamanho do site para não passar da tela do monitor */
+    height: 100vh; 
+    overflow: hidden;
 }
 
-.main {
+/* .main {
     min-height: 100vh;
     width: 100%;
     overflow: hidden;
     transition: all 0.35s ease-in-out;
     background-color: #fafbfe;
+} */
+
+.main {
+    /* Define que a área principal ocupa o tamanho da tela */
+    height: 100vh; 
+    width: 100%;
+    /* MÁGICA: A barra de rolagem vai existir APENAS no conteúdo principal! */
+    overflow-y: auto; 
+    
+    transition: all 0.35s ease-in-out;
+    background-color: #fafbfe;
 }
 
 #sidebar {
+    height: 100vh;
     width: 70px;
     min-width: 70px;
     z-index: 1000;
@@ -33,6 +52,18 @@ li {
     background-color: #0e2238;
     display: flex;
     flex-direction: column;
+
+    /* Permite rolar o menu se tiver muitos botões em uma tela pequena */
+    overflow-y: auto; 
+
+    /* Esconde a barra de rolagem no Firefox e IE */
+    scrollbar-width: none; 
+    -ms-overflow-style: none;
+}
+
+/* Esconde a barra de rolagem no Chrome, Edge e Safari, mas mantém a rolagem funcionando! */
+#sidebar::-webkit-scrollbar {
+    display: none;
 }
 
 #sidebar.expand {

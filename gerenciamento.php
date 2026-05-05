@@ -3,8 +3,25 @@ ob_start();
 session_start();
 
 require __DIR__ . "/source/autoload.php";
-use Source\Database\Connect;
+use Source\Models\User;
 
+$userModel = new User();
+
+if (empty($_SESSION['user_id'])) {
+    header("Location: index.php?status=sessao_invalida");
+    exit();
+}
+
+$loggedUser = $userModel->findById($_SESSION['user_id']);
+if (!$loggedUser || $loggedUser->perfil !== 'adm') {
+    // Se não for admin, chuta de volta para o hub
+    header("Location: hub.php?erro=acesso_negado");
+    exit();
+}
+
+$userName = $loggedUser->nome;
+$firstName = explode(' ', $userName)[0];
+$perfil = $loggedUser->perfil;
 
 ?>
 
@@ -19,128 +36,160 @@ use Source\Database\Connect;
     <link href="https://cdn.lineicons.com/4.0/lineicons.css" rel="stylesheet" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Rubik+Doodle+Shadow&display=swap" rel="stylesheet">
-    <title>Gerenciamento</title>
+    <title>Gerenciamento | Admin</title>
     <style>
-        h1{
+        .card-admin {
+            transition: all 0.3s ease;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            text-align: center;
+            padding: 2rem;
+            height: 100%;
+            background: #fff;
+        }
+        .card-admin:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+            background-color: #f8f9fa;
+        }
+        .icon-box {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: #0e2238;
+        }
+        .card-title {
+            font-weight: 700;
+            color: #333;
+        }
+        .card-text {
+            color: #777;
+            font-size: 0.9rem;
+        }
+        h1.title-page {
             font-family: 'Rubik Doodle Shadow', system-ui;
-            font-size: 56px;
+            font-size: 48px;
+            color: #0e2238;
         }
     </style>
 </head>
-<body>    
-    <?php
-
-    if($_SESSION['flag'] == false){
-        header("Location:index.php");
-    }
-
-    if (isset($_REQUEST["logoff"]) && $_REQUEST["logoff"] == true) {
-        $_SESSION['flag'] = false;
-        session_unset();
-        header("Location:index.php");
-    }
-
-    if($_SESSION['perfil'] =! 'adm'){
-        header("Location:dashboard.php");
-    }
-    
-    $sql = Connect::getInstance()->prepare("SELECT nome, perfil FROM usuarios WHERE id = :idUser");
-    $sql->bindParam('idUser',$_SESSION['user_id']);
-    if($sql->execute())
-    {
-        if($proc = $sql->fetch()){
-            $userName = $proc->nome;
-            $perfil = $proc->perfil;
-        }
-    }
-    
-    $firstName = substr($userName,0,strpos($userName," "));
-
-    if(isset($_REQUEST['pddeAE']) && $_REQUEST['pddeAE'] == true){
-        $_SESSION['nav'] = array("active","","","","");
-        $_SESSION['navShow'] = array("show active","","","","");
-        $_SESSION['sel'] = array("true","false","false","false","false");
-        header("Location:pddePC.php");
-    }
-
-    if(isset($_REQUEST['pddeAF']) && $_REQUEST['pddeAF'] == true){
-        $_SESSION['navF'] = array("active","","","","","");
-        $_SESSION['navShowF'] = array("show active","","","","","");
-        $_SESSION['selF'] = array("true","false","false","false","false","false");
-        header("Location:pddeFinanc.php");
-    }
-
-    if(isset($_REQUEST['analiseTC']) && $_REQUEST['analiseTC'] == true){
-        $_SESSION['nav'] = array("active","","","","");
-        $_SESSION['navShow'] = array("show active","","","","");
-        $_SESSION['sel'] = array("true","false","false","false","false");
-        header("Location:termoPC.php");
-    }
-    ?>           
-
+<body>       
     <div class="wrapper">
         <?php include 'menu.php'; ?>
-        <div class="main p-3">
-            <div class="text-center">
-                <h1>
-                Gerenciamento
-                </h1>
-            </div>
+
+        <div class="main p-4">
+            <div class="container">
+                <header class="mb-5 text-center">
+                    <h1 class="title-page">Painel de Gerenciamento</h1>
+                    <p class="text-muted">Gestão estratégica do sistema PDDE</p>
+                </header>
             
-            <hr>
-            <p class="text-center">
-                <a href="actionlogs.php" class="link-body-emphasis link-underline-dark link-offset-3">Acessar Logs</a><br /><br />
-                <a href="usuarios.php" class="link-body-emphasis link-underline-dark link-offset-3">Cadastro de Usuários</a><br /><br />
-                <a href="instituicoes.php" class="link-body-emphasis link-underline-dark link-offset-3">Cadastro de Instituições</a><br /><br />
-                <a href="contabilidades.php" class="link-body-emphasis link-underline-dark link-offset-3">Cadastro de Contabilidades</a><br /><br />
-                <a href="gerenciarcota.php" class="link-body-emphasis link-underline-dark link-offset-3">Gerenciar Itens da Cota</a><br /><br />
-                <a href="gerenciarDocsPend.php" class="link-body-emphasis link-underline-dark link-offset-3">Gerenciar Documentos de Pendência</a><br /><br />                
-            </p>            
+            
+            <div class="row g-4">
+
+                <div class="col-md-6 col-lg-4">
+                    <a href="actionlogs.php" class="text-decoration-none">
+                        <div class="card card-admin shadow-sm">
+                            <div class="icon-box">
+                                <i class="lni lni-pulse"></i>
+                            </div>
+                            <h5 class="card-title">Acessar Logs</h5>
+                            <p class="card-text">Monitorar o histórico de ações e acessos no sistema.</p>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-md-6 col-lg-4">
+                    <a href="usuarios.php" class="text-decoration-none">
+                        <div class="card card-admin shadow-sm">
+                            <div class="icon-box">
+                                <i class="lni lni-users"></i>
+                            </div>
+                            <h5 class="card-title">Usuários</h5>
+                            <p class="card-text">Gerenciar acessos, perfis e permissões da equipe.</p>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-md-6 col-lg-4">
+                    <a href="instituicoes.php" class="text-decoration-none">
+                        <div class="card card-admin shadow-sm">
+                            <div class="icon-box">
+                                <i class="lni lni-apartment"></i>
+                            </div>
+                            <h5 class="card-title">Instituições</h5>
+                            <p class="card-text">Cadastrar e editar escolas e unidades de ensino.</p>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-md-6 col-lg-4">
+                    <a href="contabilidades.php" class="text-decoration-none">
+                        <div class="card card-admin shadow-sm">
+                            <div class="icon-box">
+                                <i class="lni lni-calculator"></i>
+                            </div>
+                            <h5 class="card-title">Contabilidades</h5>
+                            <p class="card-text">Gerenciar cadastros de escritórios de contabilidade.</p>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-md-6 col-lg-4">
+                    <a href="gerenciarcota.php" class="text-decoration-none">
+                        <div class="card card-admin shadow-sm">
+                            <div class="icon-box">
+                                <i class="lni lni-list"></i>
+                            </div>
+                            <h5 class="card-title">Itens da Cota</h5>
+                            <p class="card-text">Configurar documentos que compõem a geração de cotas.</p>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-md-6 col-lg-4">
+                    <a href="gerenciarDocsPend.php" class="text-decoration-none">
+                        <div class="card card-admin shadow-sm">
+                            <div class="icon-box text-warning">
+                                <i class="lni lni-warning"></i>
+                            </div>
+                            <h5 class="card-title">Documentos Pendentes</h5>
+                            <p class="card-text">Gerenciar parametrização de documentos de pendência.</p>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <a href="importar_dados.php" class="text-decoration-none">
+                        <div class="card card-admin shadow-sm">
+                            <div class="icon-box text-success">
+                                <i class="lni lni-cloud-upload"></i>
+                            </div>
+                            <h5 class="card-title">Importação em Massa</h5>
+                            <p class="card-text">Upload de planilhas CSV para popular processos, repasses, ajustes, empenhos, pagamentos, etc...</p>
+                        </div>
+                    </a>
+                </div>
+
+            </div>            
         </div>        
     </div>
            
-    <!-- Modal -->
-    <div class="modal fade" id="menuModal" tabindex="-1" aria-labelledby="menuModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title fs-5" id="menuModalLabel">Deseja voltar ao menu?</h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <!--<div class="modal-body">
-                    Deseja realmente sair?
-                </div>-->
-                <div class="modal-footer">                            
-                    <button type="button" class="btn btn-success" onclick="location.href='home.php'">SIM</button>
-                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">NÃO</button>
-                </div>
-            </div>
-        </div>
-    </div>
-        <!-- Modal Sair -->
-    <div class="modal fade" id="logoffModal" tabindex="-1" aria-labelledby="logoffModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title fs-5" id="logoffModalLabel">Deseja realmente sair?</h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <!--<div class="modal-body">
-                    Deseja realmente sair?
-                </div>-->
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-success" onclick="location.href='?logoff=true'">SIM</button>
-                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">NÃO</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <?php include 'modalSair.php'; ?>
+    <?php include 'toasts.php'; ?>
+    <?php include 'footer.php'; ?>
 
-    <footer style="position: fixed; left: 0; bottom: 0; width: 100%; text-align: center;">
-        <font color="#575756"><small>© Copyright - Secretaria de Educação - São Bernardo do Campo | 2024. Todos os Direitos Reservados.</small></font>
-    </footer>
     <script src="./js/script.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </body>
 </html>
 <?php

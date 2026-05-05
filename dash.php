@@ -2,6 +2,10 @@
     use Source\Database\Connect;
     $pdo = Connect::getInstance();
 
+    // 1. Inicializa variáveis para evitar erros no JS caso o banco volte vazio
+    $total = $entregue = $aEx = $pend = $aFin = $aFinConc = $conclude = $aguardando = 0;
+    $inicial = $rProprios = $rentabilide = $devolucoes = $final = $custeio = $capital = $repTotal = $despesas = 0;
+
     $sql = $pdo->prepare("SELECT count(numero) AS processos FROM processos WHERE tipo LIKE 'PDDE%'");
     $sql->execute();
     if($processos = $sql->fetch())
@@ -89,67 +93,99 @@
 
 ?>    
 <script>
-    //Gráfico Pizza
     google.charts.load('current', {'packages':['corechart']});
-    google.charts.setOnLoadCallback(drawChart);
+    
+    // Função unificada para desenhar todos os gráficos
+    function drawAllCharts() {
+        drawChartStatus();
+        drawChartFinanceiro();
+    }
 
-    function drawChart() {
+    google.charts.setOnLoadCallback(function() {
+        setTimeout(drawAllCharts, 150); // Espera 150 milissegundos
+    });
 
-        // Set Data
+    // Redesenha os gráficos caso a janela do navegador mude de tamanho (Responsividade Real)
+    window.addEventListener('resize', drawAllCharts);
+
+    // ==========================================
+    // GRÁFICO 1: PIE (DONUT) - STATUS
+    // ==========================================
+    function drawChartStatus() {
         const data = google.visualization.arrayToDataTable([
-        ['Status', 'Quantidade'],
-        ['Aguardando Entrega',<?= $aguardando ?>],
-        ['Entregue',<?= $entregue ?>],
-        ['Análise da Execução',<?= $aEx ?>],
-        ['Análise Financeira',<?= $aFin ?>],
-        ['Pendências na Análise', <?= $pend ?>],
-        ['Análise Financeira Concluída',<?= $aFinConc ?>],
-        ['Concluído',<?= $conclude ?>],
+            ['Status', 'Quantidade'],
+            ['Aguardando Entrega', <?= $aguardando ?>],
+            ['Entregue', <?= $entregue ?>],
+            ['Análise da Execução', <?= $aEx ?>],
+            ['Análise Financeira', <?= $aFin ?>],
+            ['Pendências na Análise', <?= $pend ?>],
+            ['Financ. Concluída', <?= $aFinConc ?>],
+            ['Concluído', <?= $conclude ?>]
         ]);
 
-        // Set Options
         const options = {
-        title:'Status Análise da Prestação de Contas',
-        backgroundColor: '#fafbfe',
-        is3D: 'true'
+            title: 'Análise da Prestação de Contas',
+            titleTextStyle: { color: '#495057', fontSize: 16, bold: true },
+            backgroundColor: 'transparent', // Fundo transparente para mesclar com o card
+            pieHole: 0.45, // Transforma em um Donut moderno
+            chartArea: { width: '90%', height: '75%' },
+            legend: { position: 'right', alignment: 'center', textStyle: { color: '#6c757d', fontSize: 12 } },
+            // Paleta de cores baseada no Bootstrap para manter a harmonia visual
+            colors: ['#adb5bd', '#0dcaf0', '#0d6efd', '#6f42c1', '#ffc107', '#20c997', '#198754']
         };
 
-        // Draw
         const chart = new google.visualization.PieChart(document.getElementById('statusPrestacao'));
-        
         chart.draw(data, options);
     }
     
-    google.charts.setOnLoadCallback(drawChart1);
-    //Gráfico Coluna
-    function drawChart1() {
-        var data = google.visualization.arrayToDataTable([
-            ["Saldo", "Valor"],
-            ["Saldo em 01/01", <?= $inicial ?>],
-            ["Repasse", <?= $repTotal ?>],
-            ["Recursos Próprios", <?= $rProprios ?>],
-            ["Rentabilidade", <?= $rentabilide ?>],
-            ["Devoluções", <?= $devolucoes ?>],
-            ["Despesas", <?= $despesas ?>],
-            ["Saldo em 31/12", <?= $final ?>]
+    // ==========================================
+    // GRÁFICO 2: COLUNAS - FINANCEIRO
+    // ==========================================
+    function drawChartFinanceiro() {
+        var data = new google.visualization.DataTable();
+        data.addColumn('string', 'Categoria');
+        data.addColumn('number', 'Valor');
+        data.addColumn({type: 'string', role: 'style'}); // Coluna para cor individual
+        data.addColumn({type: 'string', role: 'annotation'}); // Anotação em cima da barra
+
+        // Adiciona os dados com cores específicas para cada coluna
+        data.addRows([
+            ["Saldo Anterior", <?= $inicial ?>, 'color: #6c757d', 'R$ <?= number_format($inicial, 2, ",", ".") ?>'],
+            ["Repasse", <?= $repTotal ?>, 'color: #0d6efd', 'R$ <?= number_format($repTotal, 2, ",", ".") ?>'],
+            ["Rec. Próprios", <?= $rProprios ?>, 'color: #17a2b8', 'R$ <?= number_format($rProprios, 2, ",", ".") ?>'],
+            ["Rentabilidade", <?= $rentabilide ?>, 'color: #20c997', 'R$ <?= number_format($rentabilide, 2, ",", ".") ?>'],
+            ["Despesas", <?= $despesas ?>, 'color: #dc3545', 'R$ <?= number_format($despesas, 2, ",", ".") ?>'],
+            ["Devoluções", <?= $devolucoes ?>, 'color: #ffc107', 'R$ <?= number_format($devolucoes, 2, ",", ".") ?>'],
+            ["Saldo Atual", <?= $final ?>, 'color: #198754', 'R$ <?= number_format($final, 2, ",", ".") ?>']
         ]);
 
-        var view = new google.visualization.DataView(data);
-        view.setColumns([0, 1,
-                        { calc: "stringify",
-                            sourceColumn: 1,
-                            type: "string",
-                            role: "annotation" }]);
+        // Formatador para deixar o eixo Y em formato de moeda (R$)
+        var formatter = new google.visualization.NumberFormat({ prefix: 'R$ ', decimalSymbol: ',', groupingSymbol: '.' });
+        formatter.format(data, 1);
 
         var options = {
-            title: "Saldo PDDE",
-            width: 900,
-            height: 400,
-            backgroundColor: '#fafbfe',
-            bar: {groupWidth: "95%"},
+            title: "Movimentação Financeira (PDDE)",
+            titleTextStyle: { color: '#495057', fontSize: 16, bold: true },
+            backgroundColor: 'transparent',
+            chartArea: { width: '85%', height: '70%' },
+            bar: { groupWidth: "75%" },
             legend: { position: "none" },
+            animation: { startup: true, duration: 1000, easing: 'out' }, // Animação de subida ao carregar
+            vAxis: { 
+                format: 'currency', // Força o eixo esquerdo a mostrar moeda
+                textStyle: { color: '#6c757d' },
+                gridlines: { color: '#e9ecef' }
+            },
+            hAxis: {
+                textStyle: { color: '#495057', fontSize: 11 }
+            },
+            annotations: {
+                alwaysOutside: true,
+                textStyle: { fontSize: 10, color: '#495057', auraColor: 'none' }
+            }
         };
+
         var chart = new google.visualization.ColumnChart(document.getElementById("columnchart_values"));
-        chart.draw(view, options);
+        chart.draw(data, options);
     }
 </script>

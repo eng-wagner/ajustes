@@ -25,7 +25,7 @@ class Processo extends Model
      */
     public function all(): array
     {
-        $stmt = $this->pdo->query("SELECT * FROM processo");        
+        $stmt = $this->pdo->query("SELECT * FROM processos");        
         return $stmt->fetchAll(PDO::FETCH_CLASS, self::class);
     }
 
@@ -93,7 +93,7 @@ class Processo extends Model
             'idStatus' => $idSts,
             'dataEnt' => $agora
         ]);
-    }
+    }    
 
     public function abrirTramitacao(int $id): ?Processo
     {
@@ -208,21 +208,27 @@ class Processo extends Model
     }
 
     /**
-     * Método privado para criar um novo item.
+     * Método privado para criar um novo processo.
      * @param array $data
      * @return bool
      */
     private function create(array $data): bool
-    {           
+    {          
+        $orgao = "SB"; // Valor fixo para o órgão, conforme o código original. Pode ser ajustado para ser dinâmico se necessário. 
         $stmt = $this->pdo->prepare(
             "INSERT INTO processos (orgao, numero, ano, digito, assunto, tipo, detalhamento, instituicao_id) 
              VALUES (:orgao, :numero, :ano, :digito, :assunto, :tipo, :detalhamento, :instituicao_id)"
         );
         
-        return $stmt->execute([
-            'orgao' => $data['docNome'],
-            //'numero' => $checkTc,
-            //'ano' => $checkPdde
+        return $stmt->execute([            
+            'orgao' => $orgao,
+            'numero' => $data['numProc'],
+            'ano' => $data['anoProc'],
+            'digito' => $data['digProc'],
+            'assunto' => $data['assuntoProc'],
+            'tipo' => $data['tipoProc'],
+            'detalhamento' => $data['detalhamentoProc'],
+            'instituicao_id' => $data['instProc']
         ]);
     }
 

@@ -72,18 +72,24 @@ if (isset($_REQUEST['salvarEmpenho']) && $_SERVER['REQUEST_METHOD'] === 'POST')
 
 if (isset($_REQUEST['salvarPagamento']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
 {   
-    $postData = filter_input_array(INPUT_POST, FILTER_DEFAULT);                            
-    $resultado = $ajusteModel->salvarPagamento($postData);
+    try {
+        $postData = filter_input_array(INPUT_POST, FILTER_DEFAULT);                            
+        $resultado = $ajusteModel->salvarPagamento($postData);
 
-    if ($resultado['status']) {
-        $logModel->save([
-            'usuario' => $_SESSION['matricula'],
-            'acao' => "Registrou um pagamento de R$ " . $postData['valor'] . " no ajuste ID " . $postData['ajuste_id']
-        ]);        
-        redirecionar("painel_ajuste.php?id=" . $postData['ajuste_id'], 'sucesso', $resultado['message']);        
-    } else {
-        redirecionar("painel_ajuste.php?id=" . $postData['ajuste_id'], 'erro', $resultado['message']);            
-    }   
+        if ($resultado['status']) {
+            $logModel->save([
+                'usuario' => $_SESSION['matricula'],
+                'acao' => "Registrou um pagamento de R$ " . $postData['valor'] . " no ajuste ID " . $postData['ajuste_id']
+            ]);        
+            redirecionar("painel_ajuste.php?id=" . $postData['ajuste_id'], 'sucesso', $resultado['message']);        
+        } else {
+            redirecionar("painel_ajuste.php?id=" . $postData['ajuste_id'], 'erro', $resultado['message']);            
+        }       
+    } catch (\Throwable $e) {
+        die("Erro Fatal Detectado: " . $e->getMessage() . " na linha " . $e->getLine() . " do arquivo " . $e->getFile());
+    }
+
+    
 }
 
 if (isset($_REQUEST['salvarAditivo']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
@@ -446,19 +452,31 @@ $percPago = min($percPago, 100);
                             </div>
                             
                             <div class="tab-pane fade" id="pagamentos">
-                                <form action="cotaPagamento.php" method="POST" id="formGerarCota">
+                                <form action="previa_cota.php" method="POST" id="formGerarCota">
+
                                     <input type="hidden" name="ajuste_id" value="<?= htmlspecialchars($ajuste['id'] ?? '') ?>">
 
                                     <div class="d-flex justify-content-between align-items-center mb-4">
                                         <h5 class="mb-0 text-dark fw-bold">Pagamentos Registrados</h5>
-                                        <button class="btn btn-sm btn-success px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNovoPagamento">
-                                            <i class="lni lni-plus me-1"></i> Novo Pagamento
-                                        </button>
+
+                                        <div class="d-flex gap-2">
+                                            <button type="submit" class="btn btn-sm btn-primary px-3 shadow-sm" id="btnGerarCota" disabled>
+                                                <i class="lni lni-printer me-1"></i> Gerar Cota e Notificar
+                                            </button>
+
+                                            <button type="button" class="btn btn-sm btn-success px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNovoPagamento">
+                                                <i class="lni lni-plus me-1"></i> Novo Pagamento
+                                            </button>
+                                        </div>
                                     </div>
+
                                     <div class="table-responsive">
                                         <table class="table table-hover align-middle border">
                                             <thead class="table-light text-muted small text-uppercase">
                                                 <tr>
+                                                    <th style="width: 30px;" class="text-center">
+                                                        <input type="checkbox" class="form-check-input" id="selectAllPagamentos">
+                                                    </th>
                                                     <th>Data</th>
                                                     <th>Empenho Vinculado</th>
                                                     <th>Descrição</th>
@@ -469,6 +487,9 @@ $percPago = min($percPago, 100);
                                             <tbody>                                                              
                                                 <?php foreach ($pagamentos as $pagamento): ?>
                                                     <tr>
+                                                        <td class="align-middle text-center">
+                                                            <input type="checkbox" class="form-check-input check-pagamento" name="pagamentos_selecionados[]" value="<?= $pagamento['id'] ?>">
+                                                        </td>
                                                         <td class="align-middle">
                                                             <?= date('d/m/Y', strtotime($pagamento['data_pagamento'])) ?>
                                                         </td>
@@ -992,6 +1013,45 @@ $percPago = min($percPago, 100);
             })
         });
     });
+</script>
+
+<script>
+$(document).ready(function() {
+    // Referências
+    const $selectAll = $('#selectAllPagamentos');
+    const $checkboxes = $('.check-pagamento');
+    const $btnGerarCota = $('#btnGerarCota');
+
+    // Função para checar se o botão "Gerar Cota" deve ficar habilitado
+    function atualizarBotao() {
+        if ($('.check-pagamento:checked').length > 0) {
+            $btnGerarCota.prop('disabled', false);
+        } else {
+            $btnGerarCota.prop('disabled', true);
+        }
+    }
+
+    // Ao clicar no "Selecionar Todos"
+    $selectAll.on('change', function() {
+        $checkboxes.prop('checked', $(this).is(':checked'));
+        atualizarBotao();
+    });
+
+    // Ao clicar em qualquer checkbox individual
+    $checkboxes.on('change', function() {
+        // Se um individual for desmarcado, desmarca o "Selecionar Todos" também
+        if (!$(this).is(':checked')) {
+            $selectAll.prop('checked', false);
+        }
+        
+        // Se todos os individuais estiverem marcados, marca o "Selecionar Todos"
+        if ($('.check-pagamento:checked').length === $checkboxes.length) {
+            $selectAll.prop('checked', true);
+        }
+        
+        atualizarBotao();
+    });
+});
 </script>
 
 </body>

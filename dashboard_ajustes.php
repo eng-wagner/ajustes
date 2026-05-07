@@ -382,10 +382,10 @@ if (isset($_REQUEST['novoAjuste']) && $_SERVER['REQUEST_METHOD'] === 'POST')
                                             foreach ($listaAditivos as $aditivo) {
                                                 if ($aditivo['ajuste_id'] == $ajuste['id']) {
                                                     $valorGlobalTotal += (float)$aditivo['valor_aditivo'];                                                    
-                                                    $data_fim_aditivo = new DateTime($aditivo['nova_data_fim'], $timezone);
+                                                    /*$data_fim_aditivo = new DateTime($aditivo['nova_data_fim'], $timezone);
                                                     if ($data_fim_aditivo > $data_fim) {
                                                         $data_fim = $data_fim_aditivo; // Atualiza a data de fim para a do aditivo
-                                                    }
+                                                    }*/
                                                 }
                                             }
                                         }

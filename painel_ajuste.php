@@ -87,9 +87,7 @@ if (isset($_REQUEST['salvarPagamento']) && $_SERVER['REQUEST_METHOD'] === 'POST'
         }       
     } catch (\Throwable $e) {
         die("Erro Fatal Detectado: " . $e->getMessage() . " na linha " . $e->getLine() . " do arquivo " . $e->getFile());
-    }
-
-    
+    }    
 }
 
 if (isset($_REQUEST['salvarAditivo']) && $_SERVER['REQUEST_METHOD'] === 'POST') 

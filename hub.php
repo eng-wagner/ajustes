@@ -190,6 +190,18 @@ if (isset($_REQUEST["logoff"]) && $_REQUEST["logoff"] == true) {
             </div>
             <?php endif; ?>
 
+            <div class="col">
+                <a href="painel_patrimonio.php" class="card-link-wrapper">
+                    <div class="card h-100 shadow-sm module-card text-center p-4">
+                        <div class="card-body">
+                            <i class="lni lni-package fs-1 text-primary mb-3"></i>
+                            <h5 class="card-title fw-bold">Gestão de Patrimônio</h5>
+                            <p class="card-text text-muted small">Controle de bens, notas fiscais e tombamentos das instituições.</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
             <?php if ($perfil == "adm"): ?>
             <div class="col">
                 <a href="gerenciamento.php" class="card-link-wrapper">

@@ -69,6 +69,13 @@ class Processo extends Model
         return $stmt->fetchAll(PDO::FETCH_CLASS, self::class);
     }
 
+    public function findTDprocs(): array
+    {
+        $sql = "SELECT p.id as idProc, p.*, i.* FROM processos p JOIN instituicoes i ON p.instituicao_id = i.id WHERE p.assunto = 'Incorporação de Bem Patrimonial'";
+        $stmt = $this->pdo->query($sql);  
+        return $stmt->fetchAll(PDO::FETCH_CLASS, self::class);
+    }
+
     public function procStatus(int $id): ?Processo
     {
         $stmt = $this->pdo->prepare("SELECT a.status_id, s.status_pc FROM analise_pdde_25 a JOIN status_processo s ON a.status_id = s.id WHERE a.proc_id = :id");
